@@ -20,8 +20,7 @@ for id in train['Patient'].unique():
     ## for current patient, retrieve their subsequent measures in later weeks
     for i, week in enumerate(currPatient['Weeks'].iloc[1:]):
         fvc = currPatient.iloc[i, 2]
-        percent = currPatient.iloc[i, 3]
-        trainDataPoint = startingMeasure + [week, fvc, percent]
+        trainDataPoint = startingMeasure + [week, fvc]
         trainingData.append(trainDataPoint)
 trainingData = pd.DataFrame(trainingData)
 
@@ -56,8 +55,8 @@ testData['delta_week'] = testData['curr_week'].map(int) - testData['start_week']
 testData.drop(columns = ['start_Percent', 'start_week'], inplace = True)
 
 ## encode categorical features: Sex, SmokingStatus
-testData['Sex'] = le.transform(testData['Sex'])
-testData['SmokingStatus'] = le.transform(testData['SmokingStatus'])
+testData['Sex'] = le.fit_transform(testData['Sex'])
+testData['SmokingStatus'] = le.fit_transform(testData['SmokingStatus'])
 
 
 # train model and make predictions
@@ -74,4 +73,4 @@ testData['predicted_FVC'] = prediction
 
 # main execution
 if __name__ == "__main__":
-    testData.head(20)
+    print(testData.head(20))
