@@ -97,11 +97,11 @@ def rows_for_folder(
     return rows
 
 def main():
-    ap = argparse.ArgumentParser(description="Extract DICOM metadata to CSV with numeric tag columns.")
-    ap.add_argument("--dicom-dir", required=True, help="Path to a folder containing one series (or any DICOMs)")
-    ap.add_argument("--out", default="manifests/manifest.csv", help="Output CSV or Parquet (.parquet)")
-    ap.add_argument("--include-private", action="store_true", help="Include private tags")
-    ap.add_argument("--no-stop-before-pixels", action="store_true", help="Read pixels (not recommended)")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dicom-dir", required=True)
+    ap.add_argument("--out", default="manifests/manifest.csv")
+    ap.add_argument("--include-private", action="store_true")
+    ap.add_argument("--no-stop-before-pixels", action="store_true")
     args = ap.parse_args()
 
     dicom_dir = pathlib.Path(args.dicom_dir)
