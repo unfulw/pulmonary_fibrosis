@@ -1,13 +1,18 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LinearRegression
 
 # Load the csv files
-train = pd.read_csv('train.csv')
-test = pd.read_csv('test.csv')
-sample = pd.read_csv('sample_submission.csv')
+BASE_DIR = Path(__file__).resolve().parent
+train_path = BASE_DIR.parent / "data" / "train.csv"
+test_path = BASE_DIR.parent / "data" / "test.csv"
+sample_path = BASE_DIR.parent / "data" / "sample_submission.csv"
 
+train = pd.read_csv(train_path)
+test = pd.read_csv(test_path)
+sample = pd.read_csv(sample_path)   
 
 # Prepare training data
 # ----------------------
