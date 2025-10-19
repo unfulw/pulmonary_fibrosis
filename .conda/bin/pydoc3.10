@@ -1,0 +1,5 @@
+#!/Users/jinkyungjeon/cs3244_project/pulmonary_fibrosis/.conda/bin/python3.10
+
+import pydoc
+if __name__ == '__main__':
+    pydoc.cli()
