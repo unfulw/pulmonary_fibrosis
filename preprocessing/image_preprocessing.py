@@ -5,8 +5,10 @@ Image reprocessing script for dicom scans.
 - Converts pixel data to Hounsfield Units (HU)
 - Saves each patient’s CT volume as a .npy file
 
-Packages installed:
-pip install pydicom gdcm pylibjpeg pylibjpeg-libjpeg pylibjpeg-openjpeg tqdm
+Usage instructions:
+1. Ensure 'train' folder containing 176 patient folders with dicom scan files have been downloaded (link below)
+    https://www.kaggle.com/competitions/osic-pulmonary-fibrosis-progression/data?select=train
+2. pip install numpy pydicom gdcm pylibjpeg pylibjpeg-libjpeg pylibjpeg-openjpeg tqdm
 """
 
 # Import necessary libraries
@@ -73,7 +75,7 @@ def process_all_patients():
             slices.append(image_hu)
 
         if len(slices) == 0:
-            print(f"⚠️ No valid slices for {patient_dir.name}. Skipping.")
+            print(f"No valid slices for {patient_dir.name}. Skipping.")
             continue
 
         # Stack all slices into a single 3D volume
@@ -88,4 +90,5 @@ def process_all_patients():
 
 if __name__ == "__main__":
     process_all_patients()
+
 
