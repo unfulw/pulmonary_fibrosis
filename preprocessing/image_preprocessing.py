@@ -4,7 +4,11 @@ Image reprocessing script for dicom scans.
 - Safely handles JPEG Lossless compression (using gdcm/pylibjpeg)
 - Converts pixel data to Hounsfield Units (HU)
 - Saves each patient’s CT volume as a .npy file
+
+Packages installed:
+pip install pydicom gdcm pylibjpeg pylibjpeg-libjpeg pylibjpeg-openjpeg tqdm
 """
+
 # Import necessary libraries
 from pathlib import Path
 import numpy as np
@@ -84,3 +88,4 @@ def process_all_patients():
 
 if __name__ == "__main__":
     process_all_patients()
+
