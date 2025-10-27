@@ -53,16 +53,9 @@ train_df["Weeks_scaled"] = time_scaler.fit_transform(train_df[["Weeks"]])
 train_df["FVC_scaled"] = fvc_scaler.fit_transform(train_df[["FVC"]])
 val_df["Weeks_scaled"] = time_scaler.transform(val_df[["Weeks"]])
 val_df["FVC_scaled"] = fvc_scaler.transform(val_df[["FVC"]])
+
 train_df = train_df.sort_values(["Patient", "Weeks"]).reset_index(drop=True)
+val_df = val_df.sort_values(["Patient", "Weeks"]).reset_index(drop=True)
 
-#tidying validation dataframe (collapsing rows)
-first_week = val_df.loc[val_df.groupby("Patient")["Weeks"].idxmin(), ["Patient", "Age", "Sex", "SmokingStatus", "Weeks_scaled", "FVC_scaled"]]
-last_week  = val_df.loc[val_df.groupby("Patient")["Weeks"].idxmax(), ["Patient", "Weeks_scaled"]]
-first_week = first_week.sort_values("Patient").reset_index(drop=True)
-last_week  = last_week.sort_values("Patient").reset_index(drop=True)
-dweek = last_week["Weeks_scaled"].values - first_week["Weeks_scaled"].values
-
-val_df = val_df.loc[val_df.groupby("Patient")["Weeks_scaled"].idxmin(), ["Patient", "Age", "Sex", "SmokingStatus", "Weeks_scaled", "FVC_scaled"]]
-val_df["Weeks_scaled"] = dweek
-val_df = val_df.sort_values(["Patient"]).reset_index(drop=True)
-
+print(train_df.head())
+print(val_df.head())
