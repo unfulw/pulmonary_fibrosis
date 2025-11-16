@@ -54,6 +54,13 @@ train_df["FVC_scaled"] = fvc_scaler.fit_transform(train_df[["FVC"]])
 val_df["Weeks_scaled"] = time_scaler.transform(val_df[["Weeks"]])
 val_df["FVC_scaled"] = fvc_scaler.transform(val_df[["FVC"]])
 
+# Calculate baseline FVC AFTER scaling, using each patient's first observation
+baseline_fvc_train = train_df.groupby('Patient')['FVC_scaled'].first().to_dict()
+baseline_fvc_val = val_df.groupby('Patient')['FVC_scaled'].first().to_dict()
+
+train_df['Baseline_FVC'] = train_df['Patient'].map(baseline_fvc_train)
+val_df['Baseline_FVC'] = val_df['Patient'].map(baseline_fvc_val)
+
 train_df = train_df.sort_values(["Patient", "Weeks"]).reset_index(drop=True)
 val_df = val_df.sort_values(["Patient", "Weeks"]).reset_index(drop=True)
 
