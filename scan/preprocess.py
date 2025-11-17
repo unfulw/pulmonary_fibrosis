@@ -178,12 +178,11 @@ def get_test_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -
     return np.load(os.path.join(data_path, 'test_preprocessed_scans', patient_id, f'{scan_idx}.npy'))
 
   try:
-    print("Redoing work")
     dcm = pydicom.dcmread(os.path.join(data_path, 'test', patient_id, f'{scan_idx}.dcm'))
     # Check if pixel_array is readable
     pixel_array = dcm.pixel_array
   except Exception as e:
-    print(f'Error reading {os.path.join(data_path, 'test', patient_id, f'{scan_idx}.dcm')}: {e}')
+    # print(f'Error reading {os.path.join(data_path, 'test', patient_id, f'{scan_idx}.dcm')}: {e}')
     return None
   preprocessed_scan = preprocess_dicom(patient_id, [dcm])
 
@@ -204,12 +203,12 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
     return np.load(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'))
   
   try:
-    print("Redoing work")
+    # print("Redoing work")
     dcm = pydicom.dcmread(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm'))
     # Check if pixel_array is readable
     pixel_array = dcm.pixel_array
   except Exception as e:
-    print(f'Error reading {os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')}: {e}')
+    # print(f'Error reading {os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')}: {e}')
     return None
   preprocessed_scan = preprocess_dicom(patient_id, [dcm])
 
