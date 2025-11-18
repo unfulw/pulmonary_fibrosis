@@ -281,9 +281,9 @@ for idx, patient_id in enumerate(sample_patients):
     axes[row, col].plot(weeks, y_true_patient, 'o-', label='True FVC', linewidth=2, markersize=6)
     axes[row, col].plot(weeks, y_pred_patient, 's--', label='Predicted FVC', linewidth=2, markersize=6)
     axes[row, col].fill_between(weeks, 
-                           y_pred_patient - 2*y_std_patient, 
-                           y_pred_patient + 2*y_std_patient, 
-                           alpha=0.2, label='95% CI')
+        y_pred_patient - 2*y_std_patient, 
+        y_pred_patient + 2*y_std_patient, 
+        alpha=0.2, label='95% CI')
     
     axes[row, col].set_xlabel('Weeks')
     axes[row, col].set_ylabel('FVC (scaled)')
