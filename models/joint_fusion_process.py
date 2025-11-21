@@ -36,11 +36,8 @@ sys.path.insert(0, str(repo_root))
 
 ## PART 1: Image data
 
-# Process dicom ct-scans into npy files
-from preprocessing.image_preprocessing import preprocess_scans
-
 # load scan data since already preprocessed before
-scans_dir_pkl = repo_root / "data" / "preprocessed_scans.pkl"
+scans_dir_pkl = "data/preprocessed_scans.pkl"
 preprocessed_scans = pickle.load(open(scans_dir_pkl, 'rb'))
 
 # function to prepare preprocessed scans into standard volumes for 3D ResNet/CNN encoder
@@ -346,7 +343,7 @@ class FusionModel(nn.Module):
 
 # Load the model
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_PATH = repo_root/"models"/"final_jointFusion_model.pth"
+MODEL_PATH = "models/final_jointFusion_model.pth"
 model = FusionModel().to(DEVICE)
 model.load_state_dict(torch.load(MODEL_PATH))
 print(f"Loaded final jointFusion_model on device: {DEVICE}")
@@ -412,8 +409,8 @@ for id, item in X_tabular_val.items():
 # --------------------------- # 
 
 # Read in and prepare test data for tabular
-test_path = repo_root/"data"/"test.csv"
-sample_path = repo_root/"data"/"sample_submission.csv"
+test_path = "data/test.csv"
+sample_path = "data/sample_submission.csv"
 
 test = pd.read_csv(test_path)
 sample = pd.read_csv(sample_path)  
@@ -455,7 +452,7 @@ def preprocess_test_scans(data_path: str) -> dict[str, np.ndarray]:
     return preprocessed_scans
 
 # load test scan data
-test_scans_dir_pkl = repo_root/"data"/"preprocessed_test_scans.pkl"
+test_scans_dir_pkl = "data/preprocessed_test_scans.pkl"
 preprocessed_test_scans = pickle.load(open(test_scans_dir_pkl, 'rb'))
 
 test_scans = build_image_volumes(preprocessed_test_scans)
