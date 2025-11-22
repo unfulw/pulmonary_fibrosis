@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import pickle
 
+
 # Add preprocessing module to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "preprocessing", "scan")))
 from preprocess import preprocess_scans, get_preprocessed_scan
