@@ -20,7 +20,7 @@ repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root))
 
 from preprocessing.tabular_preprocessing import train_df, val_df
-from preprocessing.scan.preprocess import preprocess_scans
+from preprocessing.scan.preprocess import preprocess_scans, get_preprocessed_scan
 
 data_dir = r'C:\Users\rlaal\Documents\NUS\AY2526S1\CS3244\Project\osic-pulmonary-fibrosis-progression'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -33,20 +33,16 @@ if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
 
 # Count the number of scans for each patient
 scan_count = {}
-test_scan_count = {}
 for patient_id in os.listdir(os.path.join(data_dir, 'train')):
-    scan_count[patient_id] = len(os.listdir(os.path.join(data_dir, 'train', patient_id)))
-    
-    if patient_id in test_patient_ids:
-        test_scan_count[patient_id] = len(os.listdir(os.path.join(data_dir, 'test', patient_id)))
+    patient_path = os.path.join(data_dir, 'train', patient_id)
+    if os.path.isdir(patient_path):
+        # Count only .dcm files
+        scan_count[patient_id] = len([f for f in os.listdir(patient_path) if f.endswith('.dcm')])
 
-test_patient_id_to_initial_FVC = test_datas.groupby('Patient')['FVC'].first().to_dict()
-test_patient_id_to_initial_weeks = test_datas.groupby('Patient')['Weeks'].first().to_dict()
-
-# Calculate normalization statistics for tabular features
-all_weeks = train_datas['Weeks'].values
-all_initial_fvc = train_datas.groupby('Patient')['FVC'].first().values
-all_initial_weeks = train_datas.groupby('Patient')['Weeks'].first().values
+# Calculate normalization statistics for tabular features from preprocessed data
+all_weeks = train_df['Weeks'].values
+all_initial_fvc = train_df.groupby('Patient')['FVC'].first().values
+all_initial_weeks = train_df.groupby('Patient')['Weeks'].first().values
 
 tabular_stats = {
     'weeks_mean': float(np.mean(all_weeks)),
@@ -59,9 +55,15 @@ tabular_stats = {
 
 print(f"Tabular normalization stats: {tabular_stats}")
 
+# Build initial FVC and weeks mappings
+patient_id_to_initial_FVC = train_df.groupby('Patient')['FVC'].first().to_dict()
+patient_id_to_initial_weeks = train_df.groupby('Patient')['Weeks'].first().to_dict()
+val_patient_id_to_initial_FVC = val_df.groupby('Patient')['FVC'].first().to_dict()
+val_patient_id_to_initial_weeks = val_df.groupby('Patient')['Weeks'].first().to_dict()
+
 train_x, train_y = defaultdict(list), defaultdict(list)
 
-for idx, row in train_datas.iterrows():
+for idx, row in train_df.iterrows():
     train_x[row['Patient']].append({
         'Weeks': row['Weeks'],
         'initial_FVC': patient_id_to_initial_FVC[row['Patient']],
@@ -71,23 +73,13 @@ for idx, row in train_datas.iterrows():
 
 val_x, val_y = defaultdict(list), defaultdict(list)
 
-for idx, row in val_datas.iterrows():
+for idx, row in val_df.iterrows():
     val_x[row['Patient']].append({
         'Weeks': row['Weeks'],
-        'initial_FVC': patient_id_to_initial_FVC[row['Patient']],
-        'initial_weeks': patient_id_to_initial_weeks[row['Patient']],
+        'initial_FVC': val_patient_id_to_initial_FVC[row['Patient']],
+        'initial_weeks': val_patient_id_to_initial_weeks[row['Patient']],
     })
     val_y[row['Patient']].append(row['FVC'])
-
-test_x, test_y = defaultdict(list), defaultdict(list)
-
-for idx, row in test_datas.iterrows():
-    test_x[row['Patient']].append({
-        'Weeks': row['Weeks'],
-        'initial_FVC': test_patient_id_to_initial_FVC[row['Patient']],
-        'initial_weeks': test_patient_id_to_initial_weeks[row['Patient']],
-    })
-    test_y[row['Patient']].append(row['FVC'])
 
 # window = 0 to remove smoothing
 def plot_loss(training_loss, val_loss, window=20):
@@ -114,49 +106,38 @@ def plot_loss(training_loss, val_loss, window=20):
 def get_scans(patient_id: str, patient_scan_count: int, scan_batch_size: int) -> torch.Tensor:
     skip_size = max(1, round(patient_scan_count / scan_batch_size))
     scans = []
+    failed_scans = []
+    
     for j in range(1, patient_scan_count + 1, skip_size):
         scan = get_preprocessed_scan(data_dir, patient_id, j)
         if scan is None:
+            failed_scans.append(j)
             continue
-        scan = torch.tensor(scan, dtype=torch.float32, device=device)
+        # get_preprocessed_scan returns shape (1, H, W), we need (H, W)
+        if len(scan.shape) == 3:
+            scan = scan[0]
+        scan = torch.tensor(scan, dtype=torch.float32, device=device).unsqueeze(0)  # Add channel dim: (1, H, W)
         scans.append(scan)
-    scans = torch.stack(scans)
+    
+    if len(scans) == 0:
+        print(f"WARNING: No valid scans for patient {patient_id}")
+        print(f"  Scan count: {patient_scan_count}, Skip size: {skip_size}")
+        print(f"  Attempted indices: {list(range(1, patient_scan_count + 1, skip_size))}")
+        print(f"  Failed indices: {failed_scans}")
+        # Return None instead of raising error - caller should handle this
+        return None
+    
+    scans = torch.stack(scans)  # (N, 1, H, W)
     return scans
 
 
 
 def test_model(cnn_model, fc_model, scan_batch_size=64):
-    cnn_model.to(device)
-    fc_model.to(device)
-
-    cnn_model.eval()
-    fc_model.eval()
-
-    test_predictions = []
-    test_target = []
-
-    for patient_id in tqdm(test_patient_ids):
-        patient_scan_count = test_scan_count[patient_id]
-        scans = get_scans(patient_id, patient_scan_count, scan_batch_size)
-        features = cnn_model.forward(scans)
-        features = torch.mean(features, dim=0) # 1024,
-
-        x = test_x[patient_id]
-        y = test_y[patient_id]
-
-        for i in range(len(x)):
-            weeks = torch.tensor(x[i]['Weeks'], dtype=torch.float32, device=device).unsqueeze(0)
-            initial_FVC = torch.tensor(x[i]['initial_FVC'], dtype=torch.float32, device=device).unsqueeze(0)
-            initial_FVC_weeks = torch.tensor(x[i]['initial_weeks'], dtype=torch.float32, device=device).unsqueeze(0)
-
-            output = fc_model.forward(features, weeks, initial_FVC, initial_FVC_weeks).squeeze()
-            test_predictions.append(output.item())
-            test_target.append(y[i])
-
-        del x, y, features, scans, weeks, initial_FVC, initial_FVC_weeks, output
-        torch.cuda.empty_cache()
-    
-    return torch.tensor(test_predictions), torch.tensor(test_target)
+    """
+    Test model function - requires test data to be set up.
+    Currently disabled as test data structures are not initialized.
+    """
+    raise NotImplementedError("Test data not configured. Use validation set for evaluation.")
 
 # Quick visualization
 def plot_test_results(targets, predictions, losses):
@@ -260,10 +241,17 @@ def train_model(cnn_model, fc_model, log_file, epoch=6, learning_rate=0.0001, sc
             x = train_x[patient_id]
             y = train_y[patient_id]
 
-            # Accumulate gradient for 8 datapoints for each patient
-            total_loss = 0
+            # Get scans for this patient
             patient_scan_count = scan_count[patient_id]
             scans = get_scans(patient_id, patient_scan_count, scan_batch_size)
+            
+            # Skip patient if scans couldn't be loaded
+            if scans is None:
+                print(f"Skipping patient {patient_id} - no valid scans")
+                continue
+
+            # Accumulate gradient for 8 datapoints for each patient
+            total_loss = 0
             for i in range(0, len(x), 4):
                 optimizer.zero_grad()
                 features = cnn_model.forward(scans)
@@ -323,6 +311,11 @@ def train_model(cnn_model, fc_model, log_file, epoch=6, learning_rate=0.0001, sc
                 patient_scan_count = scan_count[patient_id]
                 # Only take a look at "scan_batch_size" number of representive slices from each patient
                 scans = get_scans(patient_id, patient_scan_count, scan_batch_size)
+                
+                # Skip patient if scans couldn't be loaded
+                if scans is None:
+                    print(f"Skipping patient {patient_id} in validation - no valid scans")
+                    continue
 
                 features = cnn_model.forward(scans)
                 features = torch.mean(features, dim=0)
@@ -468,6 +461,23 @@ fc_model = FCLayer(tabular_norm_stats=tabular_stats).to(device)
 log_file = 'training_log_simple_cnn.txt'
 
 training_loss, val_loss = train_model(cnn_model, fc_model, log_file, epoch=10, scan_batch_size=64)
+
+# Save model weights
+checkpoint_dir = Path(__file__).parent / 'checkpoints'
+checkpoint_dir.mkdir(exist_ok=True)
+
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+checkpoint_path = checkpoint_dir / f'cnn_model_{timestamp}.pth'
+
+torch.save({
+    'cnn_state_dict': cnn_model.state_dict(),
+    'fc_state_dict': fc_model.state_dict(),
+    'tabular_stats': tabular_stats,
+    'training_loss': training_loss,
+    'val_loss': val_loss
+}, checkpoint_path)
+
+print(f"Model weights saved to: {checkpoint_path}")
 
 plot_loss(training_loss, val_loss)
 plot_patient_predict_samples(cnn_model, fc_model)
