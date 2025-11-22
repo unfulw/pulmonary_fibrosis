@@ -122,7 +122,7 @@ n_patients = train_df["Patient"].nunique()
 X_baseline_train = torch.tensor(train_df[["Baseline_FVC"]].values, dtype=torch.float32)
 
 class MixedKernelM2(nn.Module):
-    def __init__(self, n_patients, sex_card, smk_card, emb_dim=2):
+    def __init__(self, n_patients, sex_card, smk_card, emb_dim=4):  # Increased from 2 to 4
         super().__init__()
         self.beta_w = nn.Linear(1, 1, bias=False)  # weeks effect
         self.beta_a = nn.Linear(1, 1, bias=False)  # age effect
@@ -161,13 +161,13 @@ class MixedKernelM2(nn.Module):
     
 class GPM2(gpytorch.models.ExactGP):
     def __init__(self, weeks, age, baseline_fvc, pid, sex, smk, y, likelihood, 
-                 n_patients, sex_card, smk_card, emb_dim=2):
+                 n_patients, sex_card, smk_card, emb_dim=4):  # Increased from 2 to 4
         # Add baseline_fvc to training inputs
         super().__init__((weeks, age, baseline_fvc, sex, smk), y, likelihood)
         
         self.mean_module = MixedKernelM2(n_patients, sex_card, smk_card, emb_dim=emb_dim)
         self.time_kernel = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(nu=2.5, ard_num_dims=1)
+            gpytorch.kernels.MaternKernel(nu=1.5, ard_num_dims=1)  # Changed from 2.5 to 1.5 for tighter fit
         )
         self.emb_dim = emb_dim
         self.n_patients = n_patients
@@ -181,113 +181,29 @@ class GPM2(gpytorch.models.ExactGP):
         covar = self.time_kernel(weeks)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar)
 
-# likelihood_m2 = GaussianLikelihood()
-# M2 = GPM2(X_time_train, X_age_train, X_baseline_train, pid_train, sex_train, smk_train, 
-#           y_train, likelihood_m2, n_patients, sex_card, smk_card, emb_dim=2)
-
-# M2.train()
-# likelihood_m2.train()
-# optimizer_m2 = torch.optim.Adam(M2.parameters(), lr=0.05)
-# mll_m2 = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood_m2, M2)
-
-# for i in range(500):  
-#     optimizer_m2.zero_grad()
-#     weeks, age, baseline_fvc, sex, smk = M2.train_inputs  # Now 5 inputs
-#     output = M2(weeks, age, baseline_fvc, sex, smk, use_patient_effects=True)
-#     loss = -mll_m2(output, y_train)
-#     loss.backward()
-#     optimizer_m2.step()
-    
-#     if (i + 1) % 50 == 0:
-#         print(f"Iter {i+1}/500 - Loss: {loss.item():.3f}")
-
-# M2.eval()
-# likelihood.eval()
-
-# X_time_val = torch.tensor(val_df[["Weeks_scaled"]].values, dtype=torch.float32)
-# X_age_val = torch.tensor(val_df[["Age"]].values, dtype=torch.float32)
-# X_baseline_val = torch.tensor(val_df[["Baseline_FVC"]].values, dtype=torch.float32)
-# sex_val = torch.tensor(val_df["Sex"].map(sex_map).values, dtype=torch.long).unsqueeze(-1)
-# smk_val = torch.tensor(val_df["SmokingStatus"].map(smk_map).values, dtype=torch.long).unsqueeze(-1)
+    def reset_parameters(self):
+        with torch.no_grad():
+            self.time_kernel.base_kernel.raw_lengthscale.normal_(0., 0.3)  # Tighter lengthscale
+            self.time_kernel.raw_outputscale.normal_(0., 0.1)  # Lower outputscale = lower variance
+            self.likelihood.raw_noise.normal_(-4., 0.2)  # Lower noise initialization
+        
+        # Add tight prior on noise to keep predictions confident
+        self.likelihood.noise_covar.register_prior(
+            "noise_prior",
+            gpytorch.priors.NormalPrior(0.01, 0.005),
+            lambda m: m.noise
+        )
+        return self
 
 
-# with torch.no_grad(), gpytorch.settings.fast_pred_var():
-#     pred = likelihood(M2(X_time_val, X_age_val, X_baseline_val, sex_val, smk_val, 
-#                          use_patient_effects=False))
-#     y_pred = pred.mean.numpy()
-#     y_std = pred.variance.sqrt().numpy()
-
-# y_true = val_df["FVC_scaled"].values
-# residuals = y_true - y_pred
-
-# mae = np.mean(np.abs(residuals))
-# rmse = np.sqrt(np.mean(residuals**2))
-# print(f"MAE: {mae:.4f}")
-# print(f"RMSE: {rmse:.4f}")
-# print(f"\nResidual Statistics:")
-# print(f"Mean: {residuals.mean():.4f}")
-# print(f"Std: {residuals.std():.4f}")
-# print(f"Min: {residuals.min():.4f}")
-# print(f"Max: {residuals.max():.4f}")
-
-# print(f"R squared: {r2_score(y_true, y_pred)}")
-
-# plt.figure(figsize=(8, 6))
-# plt.scatter(y_true, y_pred, alpha=0.5, s=20)
-# plt.plot([y_true.min(), y_true.max()], 
-#          [y_true.min(), y_true.max()], 
-#          'r--', lw=2, label='Perfect prediction')
-# plt.xlabel('True FVC (scaled)')
-# plt.ylabel('Predicted FVC (scaled)')
-# plt.title('Predicted vs Actual')
-# plt.legend()
-# plt.grid(True, alpha=0.3)
-
-# plt.tight_layout()
-# plt.savefig('model_diagnostics.png', dpi=300, bbox_inches='tight')
-# plt.show()
-
-# # Select 10 patient IDs from validation set
-# sample_patients = val_df['Patient'].unique()[:10]
-
-# fig, axes = plt.subplots(2, 5, figsize=(20, 8))
-
-# for idx, patient_id in enumerate(sample_patients):
-#     patient_data = val_df[val_df['Patient'] == patient_id].sort_values('Weeks')
-    
-#     # Prepare patient-specific data
-#     X_time_patient = torch.tensor(patient_data[["Weeks_scaled"]].values, dtype=torch.float32)
-#     X_age_patient = torch.tensor(patient_data[["Age"]].values, dtype=torch.float32)
-#     X_baseline_patient = torch.tensor(patient_data[["Baseline_FVC"]].values, dtype=torch.float32)
-#     sex_patient = torch.tensor(patient_data["Sex"].map(sex_map).values, dtype=torch.long).unsqueeze(-1)
-#     smk_patient = torch.tensor(patient_data["SmokingStatus"].map(smk_map).values, dtype=torch.long).unsqueeze(-1)
-    
-#     # Get predictions
-#     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-#         pred_patient = likelihood(M2(X_time_patient, X_age_patient, X_baseline_patient, 
-#                                       sex_patient, smk_patient, use_patient_effects=False))
-#         y_pred_patient = pred_patient.mean.numpy()
-#         y_std_patient = pred_patient.variance.sqrt().numpy()
-    
-#     y_true_patient = patient_data["FVC_scaled"].values
-#     weeks = patient_data["Weeks"].values
-    
-#     # Plot - use consistent 2D indexing
-#     row = idx // 5
-#     col = idx % 5
-#     axes[row, col].plot(weeks, y_true_patient, 'o-', label='True FVC', linewidth=2, markersize=6)
-#     axes[row, col].plot(weeks, y_pred_patient, 's--', label='Predicted FVC', linewidth=2, markersize=6)
-#     axes[row, col].fill_between(weeks, 
-#         y_pred_patient - 2*y_std_patient, 
-#         y_pred_patient + 2*y_std_patient, 
-#         alpha=0.2, label='95% CI')
-    
-#     axes[row, col].set_xlabel('Weeks')
-#     axes[row, col].set_ylabel('FVC (scaled)')
-#     axes[row, col].set_title(f'Patient {patient_id[:8]}...')
-#     axes[row, col].legend()
-#     axes[row, col].grid(True, alpha=0.3)
-
-# plt.tight_layout()
-# plt.savefig('longitudinal_predictions.png', dpi=300, bbox_inches='tight')
-# plt.show()
+def build_M2(X_time_train, X_age_train, X_baseline_train,
+             pid_train, sex_train, smk_train, y_train, n_patients,
+             sex_card, smk_card, emb_dim=4):  # Increased from 2 to 4
+    likelihood = GaussianLikelihood()
+    model = GPM2(
+        X_time_train, X_age_train, X_baseline_train,
+        pid_train, sex_train, smk_train,
+        y_train, likelihood, n_patients, sex_card, smk_card, emb_dim
+    )
+    model.reset_parameters()
+    return model, likelihood
