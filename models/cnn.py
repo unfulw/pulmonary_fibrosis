@@ -293,25 +293,25 @@ def train_model(cnn_model, fc_model, log_file, epoch=6, learning_rate=0.0001, sc
             total_loss = 0
             patient_scan_count = scan_count[patient_id]
             scans = get_scans(patient_id, patient_scan_count, scan_batch_size)
-            # for i in range(0, len(x), 4):
-            #     optimizer.zero_grad()
-            #     features = cnn_model.forward(scans)
-            #     features = torch.mean(features, dim=0) # 1024,
+            for i in range(0, len(x), 4):
+                optimizer.zero_grad()
+                features = cnn_model.forward(scans)
+                features = torch.mean(features, dim=0) # 1024,
                 
-            #     chunk_loss = 0
-            #     for j in range(i, min(len(x), i+4)):
-            #         weeks = torch.tensor(x[j]['Weeks'], dtype=torch.float32, device=device).unsqueeze(0)
-            #         initial_FVC = torch.tensor(x[j]['initial_FVC'], dtype=torch.float32, device=device).unsqueeze(0)
-            #         initial_FVC_weeks = torch.tensor(x[j]['initial_weeks'], dtype=torch.float32, device=device).unsqueeze(0)
+                chunk_loss = 0
+                for j in range(i, min(len(x), i+4)):
+                    weeks = torch.tensor(x[j]['Weeks'], dtype=torch.float32, device=device).unsqueeze(0)
+                    initial_FVC = torch.tensor(x[j]['initial_FVC'], dtype=torch.float32, device=device).unsqueeze(0)
+                    initial_FVC_weeks = torch.tensor(x[j]['initial_weeks'], dtype=torch.float32, device=device).unsqueeze(0)
 
-            #         # Forward Pass
-            #         output = fc_model.forward(features, weeks, initial_FVC, initial_FVC_weeks).squeeze()
-            #         loss = criterion(output, torch.tensor(y[j], dtype=torch.float32, device=device))
-            #         chunk_loss += loss
-            #         total_loss += loss.item()
+                    # Forward Pass
+                    output = fc_model.forward(features, weeks, initial_FVC, initial_FVC_weeks).squeeze()
+                    loss = criterion(output, torch.tensor(y[j], dtype=torch.float32, device=device))
+                    chunk_loss += loss
+                    total_loss += loss.item()
 
-            #     chunk_loss.backward()
-            #     optimizer.step()
+                chunk_loss.backward()
+                optimizer.step()
             
             total_loss = 0
             patient_scan_count = scan_count[patient_id]
