@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 import os
 import math
@@ -14,52 +15,20 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import pickle
 
+repo_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(repo_root))
 
-# Add preprocessing module to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "preprocessing", "scan")))
-from preprocess import preprocess_scans, get_preprocessed_scan
-
-random.seed(42)
+from preprocessing.tabular_preprocessing import train_df, val_df
+from preprocessing.scan.preprocess import preprocess_scans
 
 data_dir = r'C:\Users\rlaal\Documents\NUS\AY2526S1\CS3244\Project\osic-pulmonary-fibrosis-progression'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
 
 if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
     preprocessed_scans = preprocess_scans(data_dir)
     pickle.dump(preprocessed_scans, open(f'{data_dir}/preprocessed_scans.pkl', 'wb'))
 
-# Input: List of patient_id
-# Output: Tuple of (train_patient_ids, val_patient_ids)
-# train_ratio: Ratio of training set
-def train_val_split(patients: pd.DataFrame, train_ratio: float = 0.8) -> (pd.DataFrame, pd.DataFrame):
-  patient_ids = patients['Patient'].unique()
-  random.shuffle(patient_ids)
 
-  train_patients = patients[patients['Patient'].isin(patient_ids[:int(len(patient_ids) * train_ratio)])]
-  val_patients = patients[patients['Patient'].isin(patient_ids[int(len(patient_ids) * train_ratio):])]
-
-  return train_patients, val_patients
-
-# Prepare train and val data
-train_datas = pd.read_csv(data_dir + '/train.csv')
-test_datas = pd.read_csv(data_dir + '/test.csv')
-
-test_patient_ids = test_datas['Patient'].unique()
-
-# Remove row in train data if patient_id is in test_patient_ids
-test_datas = train_datas[train_datas['Patient'].isin(test_patient_ids)]
-train_datas = train_datas[~train_datas['Patient'].isin(test_patient_ids)]
-
-# Sort df by patient and then by 'Weeks'
-train_datas = train_datas.sort_values(by=['Patient', 'Weeks'])
-
-# Group by patient and get the first FVC value and weeks
-patient_id_to_initial_FVC = train_datas.groupby('Patient')['FVC'].first().to_dict()
-patient_id_to_initial_weeks = train_datas.groupby('Patient')['Weeks'].first().to_dict()
-
-train_datas, val_datas = train_val_split(train_datas)
 
 # Count the number of scans for each patient
 scan_count = {}
