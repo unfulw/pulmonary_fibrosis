@@ -1,9 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-
-# Preprocessing for row-coerced tabular models
+from preprocessing.pid_split import train_ids, val_ids
 
 BASE_DIR = Path(__file__).resolve().parent
 csv_path = BASE_DIR.parent / "data" / "train.csv"
@@ -34,15 +32,9 @@ for pid, g in df.groupby("Patient", sort=False):
 collapsed = pd.DataFrame(rows)
 collapsed = collapsed.reset_index(drop=True)
 
-# X = collapsed.drop(columns=["dPercent", "y_FVC_last", "Patient"]) #dPercent removed to eliminate multicollinearity
-# y = collapsed["y_FVC_last"]
-
 ######################################################################################################################
 
 # Preprocessing for gaussian process models
-
-ids = df['Patient'].unique()
-train_ids, val_ids = train_test_split(ids, test_size=0.2, random_state=3244)
 
 train_df = df[df['Patient'].isin(train_ids)].reset_index(drop=True)
 val_df   = df[df['Patient'].isin(val_ids)].reset_index(drop=True)

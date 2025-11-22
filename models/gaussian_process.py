@@ -12,7 +12,6 @@ from gpytorch.means import ConstantMean
 from gpytorch.likelihoods import GaussianLikelihood
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Set up path BEFORE importing from preprocessing
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root))
 
