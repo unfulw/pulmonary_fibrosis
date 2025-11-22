@@ -10,16 +10,22 @@ from xgboost import XGBRegressor
 
 sys.path.append(str(Path(__file__).parent.parent))
 from preprocessing.tabular_preprocessing import collapsed
+from preprocessing.pid_split import train_ids, val_ids
 
-X = collapsed.drop(columns=["dPercent", "y_FVC_last", "Patient"]) #dPercent removed to eliminate multicollinearity
+X = collapsed.drop(columns=["dPercent", "y_FVC_last", "Patient"])
 y = collapsed["y_FVC_last"]
 
-# Train-test split
-X_train, X_val, y_train, y_val = train_test_split(
-    X, y, 
-    test_size=0.2, 
-    random_state=3244
-)
+# Split by patient IDs - filter using Patient column before dropping it
+train_mask = collapsed["Patient"].isin(train_ids)
+val_mask = collapsed["Patient"].isin(val_ids)
+
+X_train = X[train_mask]
+X_val = X[val_mask]
+y_train = y[train_mask]
+y_val = y[val_mask]
+
+print(f"Training samples: {len(X_train)}")
+print(f"Validation samples: {len(X_val)}")
 
 # Initializing XGBoost model
 cat_cols = ["Sex", "SmokingStatus"]

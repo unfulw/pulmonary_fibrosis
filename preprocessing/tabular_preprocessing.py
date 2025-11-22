@@ -32,9 +32,6 @@ for pid, g in df.groupby("Patient", sort=False):
 collapsed = pd.DataFrame(rows)
 collapsed = collapsed.reset_index(drop=True)
 
-# X = collapsed.drop(columns=["dPercent", "y_FVC_last", "Patient"]) #dPercent removed to eliminate multicollinearity
-# y = collapsed["y_FVC_last"]
-
 ######################################################################################################################
 
 # Preprocessing for gaussian process models
