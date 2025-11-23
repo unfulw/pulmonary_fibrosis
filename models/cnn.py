@@ -19,18 +19,16 @@ import pickle
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root))
 
-from preprocessing.tabular_preprocessing import train_df, val_df
+from preprocessing.tabular_preprocessing import train_df, val_df, fvc_scaler, time_scaler
 from preprocessing.scan.preprocess import preprocess_scans, get_preprocessed_scan
 
 # data_dir = r'C:\Users\rlaal\Documents\NUS\AY2526S1\CS3244\Project\osic-pulmonary-fibrosis-progression'
 data_dir = r'C:\Coding\pulmonary_fibrosis\osic-pulmonary-fibrosis-progression'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
-    preprocessed_scans = preprocess_scans(data_dir)
-    pickle.dump(preprocessed_scans, open(f'{data_dir}/preprocessed_scans.pkl', 'wb'))
-
-
+# if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
+#     preprocessed_scans = preprocess_scans(data_dir)
+#     pickle.dump(preprocessed_scans, open(f'{data_dir}/preprocessed_scans.pkl', 'wb'))
 
 # Count the number of scans for each patient
 scan_count = {}
@@ -40,47 +38,41 @@ for patient_id in os.listdir(os.path.join(data_dir, 'train')):
         # Count only .dcm files
         scan_count[patient_id] = len([f for f in os.listdir(patient_path) if f.endswith('.dcm')])
 
-# Calculate normalization statistics for tabular features from preprocessed data
-all_weeks = train_df['Weeks'].values
-all_initial_fvc = train_df.groupby('Patient')['FVC'].first().values
-all_initial_weeks = train_df.groupby('Patient')['Weeks'].first().values
 
 tabular_stats = {
-    'weeks_mean': float(np.mean(all_weeks)),
-    'weeks_std': float(np.std(all_weeks)),
-    'initial_fvc_mean': float(np.mean(all_initial_fvc)),
-    'initial_fvc_std': float(np.std(all_initial_fvc)),
-    'initial_weeks_mean': float(np.mean(all_initial_weeks)),
-    'initial_weeks_std': float(np.std(all_initial_weeks))
+    'fvc_mean': float(fvc_scaler.mean_[0]),
+    'fvc_std': float(fvc_scaler.scale_[0]),
+    'weeks_mean': float(time_scaler.mean_[0]),
+    'weeks_std': float(time_scaler.scale_[0])
 }
 
-print(f"Tabular normalization stats: {tabular_stats}")
+print(f"Tabular standardization stats (from GP scalers): {tabular_stats}")
 
-# Build initial FVC and weeks mappings
-patient_id_to_initial_FVC = train_df.groupby('Patient')['FVC'].first().to_dict()
-patient_id_to_initial_weeks = train_df.groupby('Patient')['Weeks'].first().to_dict()
-val_patient_id_to_initial_FVC = val_df.groupby('Patient')['FVC'].first().to_dict()
-val_patient_id_to_initial_weeks = val_df.groupby('Patient')['Weeks'].first().to_dict()
+# Build initial FVC and weeks mappings - using SCALED values (like GP)
+patient_id_to_initial_FVC = train_df.groupby('Patient')['FVC_scaled'].first().to_dict()
+patient_id_to_initial_weeks = train_df.groupby('Patient')['Weeks_scaled'].first().to_dict()
+val_patient_id_to_initial_FVC = val_df.groupby('Patient')['FVC_scaled'].first().to_dict()
+val_patient_id_to_initial_weeks = val_df.groupby('Patient')['Weeks_scaled'].first().to_dict()
 
 train_x, train_y = defaultdict(list), defaultdict(list)
 
 for idx, row in train_df.iterrows():
     train_x[row['Patient']].append({
-        'Weeks': row['Weeks'],
-        'initial_FVC': patient_id_to_initial_FVC[row['Patient']],
-        'initial_weeks': patient_id_to_initial_weeks[row['Patient']],
+        'Weeks': row['Weeks_scaled'], 
+        'initial_FVC': patient_id_to_initial_FVC[row['Patient']], 
+        'initial_weeks': patient_id_to_initial_weeks[row['Patient']], 
     })
-    train_y[row['Patient']].append(row['FVC'])
+    train_y[row['Patient']].append(row['FVC_scaled'])  # Use scaled FVC as target
 
 val_x, val_y = defaultdict(list), defaultdict(list)
 
 for idx, row in val_df.iterrows():
     val_x[row['Patient']].append({
-        'Weeks': row['Weeks'],
-        'initial_FVC': val_patient_id_to_initial_FVC[row['Patient']],
-        'initial_weeks': val_patient_id_to_initial_weeks[row['Patient']],
+        'Weeks': row['Weeks_scaled'],  # Use scaled weeks
+        'initial_FVC': val_patient_id_to_initial_FVC[row['Patient']],  # Already scaled
+        'initial_weeks': val_patient_id_to_initial_weeks[row['Patient']],  # Already scaled
     })
-    val_y[row['Patient']].append(row['FVC'])
+    val_y[row['Patient']].append(row['FVC_scaled'])  # Use scaled FVC as target
 
 # window = 0 to remove smoothing
 def plot_loss(training_loss, val_loss, window=20):
@@ -397,14 +389,8 @@ class FCLayer(nn.Module):
     def __init__(self, input_dim=512, tabular_dim=30, tabular_norm_stats=None):
         super(FCLayer, self).__init__()
         self.tabular_norm_stats = tabular_norm_stats
-        if tabular_norm_stats is not None:
-            # Register as buffers (not parameters, but saved with model)
-            self.register_buffer('weeks_mean', torch.tensor(tabular_norm_stats['weeks_mean']))
-            self.register_buffer('weeks_std', torch.tensor(tabular_norm_stats['weeks_std']))
-            self.register_buffer('initial_fvc_mean', torch.tensor(tabular_norm_stats['initial_fvc_mean']))
-            self.register_buffer('initial_fvc_std', torch.tensor(tabular_norm_stats['initial_fvc_std']))
-            self.register_buffer('initial_weeks_mean', torch.tensor(tabular_norm_stats['initial_weeks_mean']))
-            self.register_buffer('initial_weeks_std', torch.tensor(tabular_norm_stats['initial_weeks_std']))
+        # NOTE: Input data is already standardized by StandardScaler (same as GP)
+        # No need to normalize again in forward pass since data comes pre-scaled
 
         self.fc1 = nn.Linear(input_dim + tabular_dim, 512)
         self.fc2 = nn.Linear(512, 256)
@@ -442,11 +428,8 @@ class FCLayer(nn.Module):
             nonlinearity='relu')        
 
     def forward(self, features, weeks, initial_FVC, initial_FVC_weeks):
-        if self.tabular_norm_stats is not None:
-            weeks = (weeks - self.weeks_mean) / self.weeks_std
-            initial_FVC = (initial_FVC - self.initial_fvc_mean) / self.initial_fvc_std
-            initial_FVC_weeks = (initial_FVC_weeks - self.initial_weeks_mean) / self.initial_weeks_std
-        
+        # Input data is already standardized (centered at 0, std=1) by StandardScaler
+        # This matches the GP model's preprocessing approach
         tabular_features = torch.cat([weeks, initial_FVC, initial_FVC_weeks])
         tabular_features = F.relu(self.tabular_expansion_fc1(tabular_features))
         tabular_features = self.tabular_expansion_fc2(tabular_features)
