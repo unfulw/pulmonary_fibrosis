@@ -77,3 +77,20 @@ def plot_n_patients(model, X_val, y_val, patients_val, feature_cols, n=5):
         plt.tight_layout()
         plt.show()
 
+
+# OSIC custom Laplace log-likelihood metric
+def laplace_log_likelihood(y_true, y_pred, y_sd):
+    """
+    Parameters:
+    y_true (np.ndarray): True values.
+    y_pred (np.ndarray): Predicted (mean) values.
+    y_sd (np.ndarray): Predicted Standard deviation values
+    
+    Returns:
+    float: Computed laplace_log_likelihood metric.
+    """
+    sd_clipped = np.maximum(y_sd, 70)
+    delta = np.minimum(np.abs(y_true-y_pred), 1000)
+    metric = -np.sqrt(2) * delta / sd_clipped - np.log(np.sqrt(2) * sd_clipped)
+    return np.mean(metric)
+
