@@ -100,13 +100,13 @@ rmse = np.sqrt(mean_squared_error(y_true, y_mean))
 r2   = r2_score(y_true, y_mean)
 print(f"RMSE: {rmse:.4f}, R²: {r2:.4f}")
 
-plt.figure()
-plt.errorbar(y_true, y_mean, yerr=2*y_std, fmt='o', alpha=0.5, ecolor='lightgray')
-plt.plot([-3,3],[-3,3],'r--')  # 1:1 line if still scaled
-plt.xlabel("True FVC (scaled)")
-plt.ylabel("Predicted FVC (scaled)")
-plt.title("Population-level GP Predictions (95% CI)")
-plt.show()
+# plt.figure()
+# plt.errorbar(y_true, y_mean, yerr=2*y_std, fmt='o', alpha=0.5, ecolor='lightgray')
+# plt.plot([-3,3],[-3,3],'r--')  # 1:1 line if still scaled
+# plt.xlabel("True FVC (scaled)")
+# plt.ylabel("Predicted FVC (scaled)")
+# plt.title("Population-level GP Predictions (95% CI)")
+# plt.show()
 
 # M2: GP with patient-specific effects
 # Add patient IDs and baseline for M2

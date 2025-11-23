@@ -26,9 +26,10 @@ data_dir = r'C:\Users\rlaal\Documents\NUS\AY2526S1\CS3244\Project\osic-pulmonary
 # data_dir = r'C:\Coding\pulmonary_fibrosis\osic-pulmonary-fibrosis-progression'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
-    preprocessed_scans = preprocess_scans(data_dir)
-    pickle.dump(preprocessed_scans, open(f'{data_dir}/preprocessed_scans.pkl', 'wb'))
+# Commented out - not needed, uses individual cached scans instead
+# if not os.path.exists(f'{data_dir}/preprocessed_scans.pkl'):
+#     preprocessed_scans = preprocess_scans(data_dir)
+#     pickle.dump(preprocessed_scans, open(f'{data_dir}/preprocessed_scans.pkl', 'wb'))
 
 
 
