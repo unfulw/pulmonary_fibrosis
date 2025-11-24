@@ -4,7 +4,7 @@ __pycache__/
 .DS_Store
 #ignore venv config files
 .conda/
-*.txt
+
 
 # Datafiles
 osic-pulmonary-fibrosis-progression.zip
