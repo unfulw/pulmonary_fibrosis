@@ -7,6 +7,7 @@ import torch
 import numpy
 import torch.nn.functional as F
 import os
+from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -168,7 +169,7 @@ def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -
   preprocessed_scans = []
   for hu_scan, mask in zip(hu_scans, masks):
     masked_scan = np.float32(hu_scan * mask)
-    resized_scan = cv2.resize(masked_scan, (256, 256), interpolation=cv2.INTER_AREA)
+    resized_scan = cv2.resize(masked_scan, (512, 512), interpolation=cv2.INTER_AREA)
     preprocessed_scans.append(resized_scan)
   
   return np.array(preprocessed_scans, dtype=np.float32)
@@ -201,6 +202,8 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
   """
   if os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy')):
     return np.load(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'))
+  if not os.path.exists(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')):
+    raise FileNotFoundError(f'Scan {scan_idx} for patient {patient_id} not found')
   
   try:
     # print("Redoing work")
@@ -219,7 +222,7 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
 
 def preprocess_scans(data_path: str) -> dict[str, np.ndarray]:
   preprocessed_scans = dict()
-  for patient_id in os.listdir(os.path.join(data_path, 'train')):
+  for patient_id in tqdm(os.listdir(os.path.join(data_path, 'train'))):
     patient_scans = []
     for scan_idx in range(1, len(os.listdir(os.path.join(data_path, 'train', patient_id))) + 1):
       scan = get_preprocessed_scan(data_path, patient_id, scan_idx)
