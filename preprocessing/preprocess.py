@@ -30,7 +30,7 @@ def rescale_to_hu(slices) -> np.ndarray:
   image = np.stack([s.pixel_array for s in slices])
   image = image.astype(np.int16)
   image[image == -2000] = 0
-  
+
   for slice_number, slice in enumerate(slices):
     intercept = slice.RescaleIntercept
     slope = slice.RescaleSlope
@@ -134,7 +134,7 @@ def gpu_dilation_batch(images: torch.Tensor, dilation_kernel_size: int) -> torch
   
   return dilated
 
-def mask_scans(images: list[np.ndarray], window_level: int = -600, window_width: int = 1500) -> list[np.ndarray]:
+def mask_scans(images: list[np.ndarray], window_level: int = 40, window_width: int = 80) -> list[np.ndarray]:
   """
   Generate masks for batch of CT scans using GPU acceleration.
   
@@ -215,18 +215,27 @@ def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -
     dcms: List of DICOM file datasets
     
   Returns:
-    List of preprocessed 256x256 scans
+    List of preprocessed scans
   """
   # Convert to Hounsfield units
   hu_scans = rescale_to_hu(dcms)
-  lung_mask = segment_lung_mask_definitive(hu_scans)
-  segmented_lungs_hu = hu_scans.copy()
+
+  body_mask = mask_scans(hu_scans, window_level=0, window_width=300)
+  body_mask = [np.array(mask, dtype=np.int16) for mask in body_mask]
+
+  hu_scans_masked = hu_scans.copy()
+  hu_scans_masked[np.array(body_mask) == 0] = -2000
+
+  lung_mask = segment_lung_mask_definitive(hu_scans_masked)
+  
+  segmented_lungs_hu = hu_scans_masked.copy()
   segmented_lungs_hu[lung_mask == 0] = -2000
-  plt.imshow(segmented_lungs_hu[0], cmap='gray')
-  plt.show()
-  plt.imshow(hu_scans[0], cmap='gray')
-  plt.show()
-  return np.array(segmented_lungs_hu, dtype=np.float32)
+  
+  new_size = (512, 512)
+  segmented_lungs_hu = segmented_lungs_hu.squeeze()
+  resized_scan = cv2.resize(segmented_lungs_hu, new_size, interpolation=cv2.INTER_LINEAR)
+
+  return np.array(resized_scan, dtype=np.float32)
 
 def get_test_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.ndarray:
   if os.path.exists(os.path.join(data_path, 'test_preprocessed_scans', patient_id, f'{scan_idx}.npy')):
@@ -254,9 +263,11 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
   Input: data_path: str, patient_id: str, scan_idx: int
   Returns: preprocessed_scan: np.ndarray
   """
+
   if os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy')):
     return np.load(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'))
   if not os.path.exists(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')):
+    print(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm'))
     raise FileNotFoundError(f'Scan {scan_idx} for patient {patient_id} not found')
   
   try:
@@ -287,25 +298,10 @@ def preprocess_scans(data_path: str) -> dict[str, np.ndarray]:
   return preprocessed_scans
 
 if __name__ == "__main__":
-  import time
-  import matplotlib.pyplot as plt
   import os
   
   # Load DICOM files for testing
-  patient_dir = '../osic-pulmonary-fibrosis-progression/train/ID00007637202177411956430/'
-  num_files = len(os.listdir(patient_dir))
-  dcms = [pydicom.dcmread(f'{patient_dir}{i}.dcm') for i in range(1, num_files + 1)]
-
-  # Process as batch
-  start_time = time.time()
-  results = preprocess_dicom(dcms)
-  end_time = time.time()
-  
-  # Display result
-  plt.imshow(results[15], cmap='gray')
-  plt.title('Preprocessed CT Scan')
+  patient_dir = 'C:/Coding/pulmonary_fibrosis/osic-pulmonary-fibrosis-progression/'
+  scan = get_preprocessed_scan(patient_dir, 'ID00007637202177411956430', 15)
+  plt.imshow(scan.squeeze(), cmap='gray')
   plt.show()
-  
-  print(f'Preprocessing time: {end_time - start_time:.4f} seconds')
-  print(f'Output shape: {results[0].shape}')
-  print(f'Processed {len(results)} scans')
