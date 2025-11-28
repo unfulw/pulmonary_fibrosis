@@ -282,7 +282,6 @@ This project is for academic purposes as part of CS3244 Machine Learning coursew
 ## Acknowledgments
 
 - Open Source Imaging Consortium (OSIC) for providing the high-quality dataset
-- Kaggle for hosting the competition and providing the platform
 - CS3244 course staff for guidance and support throughout the project
 - National University of Singapore, School of Computing
 
