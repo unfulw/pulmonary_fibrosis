@@ -264,26 +264,6 @@ def train_model(cnn_model, fc_model, log_file, epoch=6, learning_rate=0.0001, sc
 
                 chunk_loss.backward()
                 optimizer.step()
-            
-            total_loss = 0
-            patient_scan_count = scan_count[patient_id]
-            scans = get_scans(patient_id, patient_scan_count, scan_batch_size)
-            for i in range(len(x)):
-                optimizer.zero_grad()
-                features = cnn_model.forward(scans)
-                features = torch.mean(features, dim=0) # 1024,
-
-                weeks = torch.tensor(x[i]['Weeks'], dtype=torch.float32, device=device).unsqueeze(0)
-                initial_FVC = torch.tensor(x[i]['initial_FVC'], dtype=torch.float32, device=device).unsqueeze(0)
-                initial_FVC_weeks = torch.tensor(x[i]['initial_weeks'], dtype=torch.float32, device=device).unsqueeze(0)
-
-                # Forward Pass
-                output = fc_model.forward(features, weeks, initial_FVC, initial_FVC_weeks).squeeze()
-                loss = criterion(output, torch.tensor(y[i], dtype=torch.float32, device=device))
-                total_loss += loss.item()
-
-                loss.backward()
-                optimizer.step()
 
             patient_count += 1
             
