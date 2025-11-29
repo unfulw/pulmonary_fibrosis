@@ -49,6 +49,7 @@ def segment_lung_mask_definitive(image_hu):
     3. Keep the two largest air regions (the lungs).
     4. Clean up the final mask.
     """
+    print("Lung")
     segmented_mask = np.zeros_like(image_hu, dtype=np.uint8)
     
     for i, slice_img in enumerate(image_hu):
@@ -215,6 +216,39 @@ def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -
     dcms: List of DICOM file datasets
     
   Returns:
+    List of preprocessed 256x256 scans
+  """
+  # Convert to Hounsfield units
+  hu_scans = rescale_to_hu(dcms)
+  
+  # Generate masks using GPU batch processing
+  masks = mask_scans(hu_scans)
+  
+  # Apply masks and resize
+  preprocessed_scans = []
+  for hu_scan, mask in zip(hu_scans, masks):
+    # Apply lung windowing: [-1000, 400] HU range for lung tissue
+    windowed_scan = np.clip(hu_scan, -1000, 400)
+    
+    # Normalize to [0, 1] range
+    normalized_scan = (windowed_scan - (-1000)) / (400 - (-1000))
+    
+    # Apply mask (background becomes 0, lung tissue is in [0, 1])
+    masked_scan = np.float32(normalized_scan * mask)
+    
+    resized_scan = cv2.resize(masked_scan, (512, 512), interpolation=cv2.INTER_AREA)
+    preprocessed_scans.append(resized_scan)
+  
+  return np.array(preprocessed_scans, dtype=np.float32)
+
+def preprocess_lung_segmentation(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -> list[np.ndarray]:
+  """
+  Preprocess batch of DICOM files: HU conversion, masking, and resizing.
+  
+  Args:
+    dcms: List of DICOM file datasets
+    
+  Returns:
     List of preprocessed scans
   """
   # Convert to Hounsfield units
@@ -231,9 +265,18 @@ def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -
   segmented_lungs_hu = hu_scans_masked.copy()
   segmented_lungs_hu[lung_mask == 0] = -2000
   
+  # Apply lung windowing: [-1000, 400] HU range for lung tissue
+  windowed_scan = np.clip(segmented_lungs_hu, -1000, 400)
+  
+  # Normalize to [0, 1] range
+  normalized_scan = (windowed_scan - (-1000)) / (400 - (-1000))
+  
+  # Apply mask (background becomes 0)
+  normalized_scan[lung_mask == 0] = 0
+  
   new_size = (512, 512)
-  segmented_lungs_hu = segmented_lungs_hu.squeeze()
-  resized_scan = cv2.resize(segmented_lungs_hu, new_size, interpolation=cv2.INTER_LINEAR)
+  normalized_scan = normalized_scan.squeeze()
+  resized_scan = cv2.resize(normalized_scan, new_size, interpolation=cv2.INTER_LINEAR)
 
   return np.array(resized_scan, dtype=np.float32)
 
@@ -255,7 +298,7 @@ def get_test_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -
   np.save(os.path.join(data_path, 'test_preprocessed_scans', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
   return preprocessed_scan
 
-def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.ndarray:
+def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int, lung_segmentation: bool = False) -> np.ndarray:
   """
   Preprocess a single scan and save it to the preprocessed_scans folder
   If the scan is already preprocessed, load it from the preprocessed_scans folder
@@ -264,11 +307,13 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
   Returns: preprocessed_scan: np.ndarray
   """
 
-  if os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy')):
+  if not lung_segmentation and os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy')):
     return np.load(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'))
+  elif lung_segmentation:
+    return np.load(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id, f'{scan_idx}.npy'))
+  
   if not os.path.exists(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')):
-    print(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm'))
-    raise FileNotFoundError(f'Scan {scan_idx} for patient {patient_id} not found')
+    return None
   
   try:
     # print("Redoing work")
@@ -278,24 +323,34 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -> np.
   except Exception as e:
     # print(f'Error reading {os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')}: {e}')
     return None
-  preprocessed_scan = preprocess_dicom(patient_id, [dcm])
+    
+  if lung_segmentation:
+    preprocessed_scan = preprocess_lung_segmentation(patient_id, [dcm])
+    if not os.path.exists(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id)):
+      os.makedirs(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id))
+    np.save(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
+    return preprocessed_scan
+  else:
+    preprocessed_scan = preprocess_dicom(patient_id, [dcm])
+    if not os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id)):
+      os.makedirs(os.path.join(data_path, 'preprocessed_scans', patient_id))
+    np.save(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
+    return preprocessed_scan
 
-  if not os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id)):
-    os.makedirs(os.path.join(data_path, 'preprocessed_scans', patient_id))
-  np.save(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
-  return preprocessed_scan
 
-def preprocess_scans(data_path: str) -> dict[str, np.ndarray]:
+def preprocess_scans(data_path: str, lung_segmentation: bool = False) -> dict[str, np.ndarray]:
   preprocessed_scans = dict()
   for patient_id in tqdm(os.listdir(os.path.join(data_path, 'train'))):
     patient_scans = []
     for scan_idx in range(1, len(os.listdir(os.path.join(data_path, 'train', patient_id))) + 1):
-      scan = get_preprocessed_scan(data_path, patient_id, scan_idx)
+      scan = get_preprocessed_scan(data_path, patient_id, scan_idx, lung_segmentation)
       if scan is not None:
         patient_scans.append(scan)
     patient_scans = np.array(patient_scans, dtype=np.float32)
     preprocessed_scans[patient_id] = patient_scans
   return preprocessed_scans
+
+
 
 if __name__ == "__main__":
   import os
