@@ -277,9 +277,15 @@ python models/joint_fusion_process.py  # Early Fusion
 
 ## References
 
-1. **Schulam, P., & Saria, S. (2015).** "A Framework for Individualizing Predictions of Disease Trajectories by Exploiting Multi-Resolution Structure." *Advances in Neural Information Processing Systems*, 28, 748-756. [arXiv:1511.08950](https://arxiv.org/abs/1511.08950)
+1. **Artkulak. (2020).** GitHub - artkulak/osic-pulmonary-fibrosis-progression: 1st place solution of OSIC Pulmonary Fibrosis Progression competition at Kaggle. GitHub. https://github.com/artkulak/osic-pulmonary-fibrosis-progression
 
-2. **Open Source Imaging Consortium (OSIC). (2020).** "OSIC Pulmonary Fibrosis Progression." *Kaggle Competition*. https://www.kaggle.com/c/osic-pulmonary-fibrosis-progression
+2. **Fang, C., Bai, S., Chen, Q., Zhou, Y., Xia, L., Qin, L., Gong, S., Xie, X., Zhou, C., Tu, D., Zhang, C., Liu, X., Chen, W., Bai, X., & Torr, P. H. (2021).** Deep learning for predicting COVID-19 malignant progression. Medical Image Analysis, 72, 102096. https://doi.org/10.1016/j.media.2021.102096
+
+3. **Glotov, A., & Lyakhov, P. (2021).** Pulmonary fibrosis progression prognosis using Machine Learning. 2021 Ural Symposium on Biomedical Engineering, Radioelectronics and Information Technology (USBEREIT), 0327–0329. https://doi.org/10.1109/usbereit51232.2021.9455070
+
+4. **Open Source Imaging Consortium (OSIC). (2020).** "OSIC Pulmonary Fibrosis Progression." *Kaggle Competition*. https://www.kaggle.com/c/osic-pulmonary-fibrosis-progression
+
+5. **Schulam, P., & Saria, S. (2015).** "A Framework for Individualizing Predictions of Disease Trajectories by Exploiting Multi-Resolution Structure." *Advances in Neural Information Processing Systems*, 28, 748-756. [arXiv:1511.08950](https://arxiv.org/abs/1511.08950)
 
 ## Contributors
 
