@@ -5,6 +5,7 @@ from preprocessing.pid_split import train_ids, val_ids
 
 BASE_DIR = Path(__file__).resolve().parent
 csv_path = BASE_DIR.parent / "data" / "train.csv"
+test_csv_path = BASE_DIR.parent / "data" / "test.csv"
 
 df = pd.read_csv(csv_path)
 
