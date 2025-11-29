@@ -61,6 +61,9 @@ This project implements and compares multiple approaches for predicting FVC decl
 - Combined with fully connected layers for FVC prediction
 - *(Implementation details in `models/cnn.py`)*
 
+5 Layer CNN + 3 Layer FC to produce prediction.
+Previous work on problem utilized pretrained EfficietNet models, but used plain CNN layers to focus on improving preprocessing and training logic for extracting lung features.
+
 ### 3. Multimodal Fusion Approaches
 
 #### Approach 1: Late Fusion
@@ -218,10 +221,16 @@ The notebook walks through:
 
 This project is for academic purposes as part of CS3244 project.
 
-## Acknowledgments
+## Acknowledgments / Citations
 
 - Open Source Image Consortium (OSIC) for providing the dataset
 - CS3244 course staff for guidance and support
+- Research Paper on Significance of CT feature for fibrosis longevity. 
+  https://journal.chestnet.org/article/S0012-3692(15)46366-4/fulltext
+- Understanding CT of honeycombed lungs
+  https://radiopaedia.org/articles/honeycombing-lungs
+- Approach from Kaggle Competition winner for inspiration
+  https://www.kaggle.com/competitions/osic-pulmonary-fibrosis-progression/writeups/art-1st-place-mostly-unpredictable-solution
 
 ---
 
