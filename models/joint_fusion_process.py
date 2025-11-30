@@ -1,5 +1,7 @@
 '''
-Joint_fusion model script that uses pre-trained model to output validation and test results
+Joint_fusion model script that uses trained model (from .ipynb version) 
+to output validation and test results.
+For full analysis of validation/test results, refer to notebook version
 
 Final variables:
 - jf_validation_results
@@ -26,18 +28,23 @@ import matplotlib.pyplot as plt
 
 random.seed(3244)
 
-# Assign repo root path
-repo_root = Path(os.getcwd()).resolve().parent.parent
-sys.path.insert(0, str(repo_root))
-
 # --------------------------- #
 # ------- DATA PREP --------- #
 # --------------------------- # 
 
 ## PART 1: Image data
 
-# load scan data since already preprocessed before
+# Process dicom ct-scans into npy files
+from preprocessing.image_preprocessing import preprocess_scans
+
 scans_dir_pkl = "data/preprocessed_scans.pkl"
+if not os.path.exists(scans_dir_pkl):
+    print("Starting image preprocessing for the first time...")
+    preprocessed_scans = preprocess_scans("data")
+    pickle.dump(preprocessed_scans, open(scans_dir_pkl, 'wb'))
+
+# load scan data if already preprocessed before
+print("Loading in preprocessed image scans...")
 preprocessed_scans = pickle.load(open(scans_dir_pkl, 'rb'))
 
 # function to prepare preprocessed scans into standard volumes for 3D ResNet/CNN encoder
@@ -381,6 +388,7 @@ def get_predictions(model, val_loader, device=None):
     
     return y_pred_list, y_true_list, y_sigma_list
 
+print("Computing results on validation set...")
 y_pred_list, y_true_list, y_sigma_list = get_predictions(model, val_loader)
 
 
@@ -402,6 +410,8 @@ for id, item in X_tabular_val.items():
         "y_true": curr_patient_true,
         "y_sigma": curr_patient_sigma
         }
+    
+print("Results computed!")
     
 
 # --------------------------- #
