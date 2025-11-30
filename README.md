@@ -21,6 +21,7 @@ Pulmonary fibrosis (PF) is a progressive chronic lung disease that scars the tis
 
 This project proposes a predictive model that leverages longitudinal baseline lung CT scans alongside patient demographic and clinical information to forecast individual disease trajectories. By providing accurate forecasts, the model aims to support timely treatment adjustments while reducing the intensity and frequency of monitoring, ultimately helping to ease both the clinical and financial strain of PF management.
 
+
 ## Project Overview
 
 This project implements and compares multiple approaches for predicting FVC decline in pulmonary fibrosis patients, organized through the main analysis notebook (`main.ipynb`). The workflow follows this structure:
@@ -318,6 +319,44 @@ The early fusion approach underperformed compared to late fusion, suggesting tha
 3. Concatenate feature representations
 4. Feed into RNN fusion model for final prediction
 5. Evaluate with MAE, R², and Laplace Log-Likelihood
+
+## Data Setup & Preprocessing
+
+> **Note:** The CSV files (`train.csv`, `test.csv`) are included in this repository, but the **CT Scan images (DICOM files)** are too large to commit. You must download them manually.
+
+### 1. Download Images
+
+1.  Download the dataset from Kaggle: [OSIC Pulmonary Fibrosis Progression](https://www.kaggle.com/c/osic-pulmonary-fibrosis-progression/data).
+2.  Unzip the download.
+3.  Move the **`train/`** folder (containing the image subfolders) into the **`data/`** directory of this project.
+
+Your project structure should look like this before running the script:
+
+```text
+.
+├── preprocessing/
+│   └── CNN_LSTM_data_preprocess.py
+├── data/
+│   ├── train.csv          <-- Already in repo
+│   ├── test.csv           <-- Already in repo
+│   └── train/             <-- [PLACE DOWNLOADED IMAGE FOLDERS HERE]
+│       ├── ID000076.../
+│       └── ...
+└── ...
+
+```
+### 2. Run Preprocessing (CNN_LSTM Model)
+Run the pipeline to generate the normalized 3D arrays. Point the --data_dir argument to your data folder:
+```bash
+python preprocessing/CNN_LSTM_data_preprocess.py --data_dir data
+```
+### 3. Output (data for CNN_LSTM Model)
+The script will generate the following artifacts:
+
+data/training_metadata.csv: A new CSV file with target labels (slopes) merged with patient metadata.
+
+processed_train/: A new folder in the project root containing the converted 3D .npy files for each patient.
+
 ## Project Structure
 
 ```
