@@ -72,14 +72,163 @@ This project implements and compares multiple approaches for predicting FVC decl
 
 #### Image Data Models:
 
+**Manual Feature Extraction**
+- Makes uses of traditional CV filters to extract features from preprocessed scans
+1. Edge Detection (Sobel)
+2. Corner Detection (Harris Corner Detection)
+3. Blob Detection (DoG)
+4. Local Binary Pattern
+5. Gabor Filter
+
+Primary axis is analyzed for each feature using PCA
+With reduced dimensions, RandomForestRegressor of each feature makes prediction
+
 **CNN (Convolutional Neural Network):**
-- Processes DICOM CT scan slices
+- Processes preprocessed scans
 - Extracts spatial features from lung images
-- Combined with fully connected layers for FVC prediction
+- Project tabular features to image feature's dimensions
+- Concatenated and fed into fully connected layers for FVC prediction
 - *(Implementation details in `models/cnn.py`)*
 
 5 Layer CNN + 3 Layer FC to produce prediction.
 Previous work on problem utilized pretrained EfficietNet models, but used plain CNN layers to focus on improving preprocessing and training logic for extracting lung features.
+
+##### Other Approaches to Vision Analysis
+All approaches to improve the model is implemented in 'models/cnn.ipynb':
+
+1. Baseline Simple CNN (5 Convolutional Layers)
+Implementation: Basic CNN with 5 conv layers (32→64→128→256→512 channels), BatchNorm, MaxPooling, and Global Average Pooling
+
+Architecture: Progressive channel expansion with 2x2 pooling after each conv block
+FC Layer: Takes averaged scan features + tabular data (weeks, initial_FVC, initial_weeks)
+
+Objective: Establish baseline performance for CT scan feature extraction combined with tabular temporal data
+
+Key Features:
+Per-patient feature aggregation via mean pooling across slices
+Tabular feature expansion from 3→30 dimensions
+
+
+2. Flattened Features vs Global Pooling
+
+Implementation: Changed from averaging features across slices to flattening all slice features
+
+Architecture Change: Minimize information loss using features.flatten() instead of torch.mean(features, dim=0)
+FC Input Dimension: 512 * num_slices instead of 512
+
+Objective: Test if preserving per-slice information improves predictions vs aggregated representation
+
+Additional Changes:
+Switched from BatchNorm to GroupNorm
+Added dropout layers (0.2-0.3) for regularization
+Used AdamW optimizer
+
+Result: Similar performance between two methods, finding mean over slices doesn't lead to significant information loss.
+
+3. ImageNet-Inspired Deep Architecture (ResNet34-like)
+
+Implementation: Deeper network with repeated conv blocks mimicking ImageNet architectures
+
+Architecture:
+Conv1: 7x7 kernel, stride 2, followed by 3x3 maxpool
+Conv2-5: Multiple 3x3 convolutions with GroupNorm
+6 blocks in conv2, 11 in conv3, 5 in conv4, 2 in conv5
+
+Objective: Test if deeper architecture captures more complex lung tissue patterns
+
+Result: Had hard time converging, potentially extracting noise irrelevant to prediction
+
+
+4. Random Scan Selection Within Partitions
+
+Intent: Instead of deterministic scan selection, randomly sample within each partition to make full use of the available scans in the dataset. 
+
+Implementation: Divide the available scans into partitions, randomly sample a scan from each partition by scan_index = random.randint(curr, next_index-1) within each partition
+
+Objective: Increase training data diversity and prevent overfitting to specific slice positions
+
+Benefit: Better utilization of all available CT scan slices during training
+
+Result: Non-deterministic aspect hindered model's training progress, doesn't seem to help with overfitting.
+
+5. Patient-Agnostic Training Loop
+Implementation: Changed from patient-batched training to individual datapoint shuffling
+
+Training Strategy:
+Create flat list of (patient_id, x, y) tuples
+Shuffle all training points across patients
+Gradient accumulation every 4 steps
+
+Objective: Improve generalization by breaking patient-specific correlations. During gradient accumulation, provide model with samples from different patient to make a more accurate estimation of the dataset-wide gradient. 
+
+Downside: Repeatedly loads same patient scans (inefficient)
+
+
+6. ResNet34 with Residual Connections
+
+Implementation: Added skip connections (residual blocks) to enable training deeper networks
+
+Architecture:
+ResidualBlock: two 3x3 convs with identity shortcut when stride=1
+3, 4, 6, 3 blocks in conv2-5 respectively
+GroupNorm for normalization
+
+Objective: Address vanishing gradient problem and enable learning of residual functions
+
+Result: Did not meaningfully improve model's performance, meaning information lost during the long CNN layers is not the central issue.
+
+
+7. Bottleneck Blocks (ResNet-101/152 Architecture)
+Implementation: Deeper architecture using 1x1→3x3→1x1 bottleneck blocks
+
+Architecture:
+3 blocks in conv2, 4 in conv3, 23 in conv4, 3 in conv5 (ResNet-101 config)
+Bottleneck reduces computation: 256→64→64→256 instead of 256→256→256
+
+Output channels: 4x the intermediate channels
+
+Objective: Create much deeper model (101-152 layers) while maintaining computational efficiency
+
+Tradeoff: Higher capacity but longer training time (6s/it vs 1-2s/it)
+
+Result: Deeper network doesn't improve the model, signaling issues with data input
+
+
+8. Top/Bottom Lung Partition Analysis
+
+Implementation: Divide scans into spatial partitions (top/bottom half of lungs), and train two separate models specializing on each halves of the lung.
+
+Implementation:
+Extract features from each partition separately
+Concatenate partition features before FC layers
+Use dedicated model to analyze top/bottom half
+
+Objective: Test hypothesis that different lung regions show different fibrosis patterns
+
+Result: No meaningful improvement in performance, much longer training time. Potentially due to available dataset reducing into half, not enough to train two models fully.
+
+9. Loss Function Experiments
+
+MSE Loss: Standard squared error - sensitive to outliers
+
+Huber Loss (delta=1.0): Combines MSE (small errors) and MAE (large errors)
+
+More robust to outliers
+
+Objective: Improve robustness to extreme FVC values and measurement noise
+
+
+10. Overfitting Capacity Test
+Implementation: Single-patient overfitting test to verify model has sufficient capacity. Train on one patient for 1000 epochs with detailed diagnostics
+
+Metrics Tracked:
+Per-sample loss progression
+Gradient norms (CNN vs FC)
+Feature statistics (mean, std)
+
+Objective: Diagnose if poor performance is due to insufficient model capacity vs other issues
+
+Findings: Model struggles to overfit even single patient. This means each datapoint that belongs under the same patient is so noisy, that the model is having a hard time optimizing function that predicts all points nicely. 
 
 ### 3. Multimodal Fusion Approaches
 
