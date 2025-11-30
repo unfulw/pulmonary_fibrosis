@@ -92,6 +92,21 @@ With reduced dimensions, RandomForestRegressor of each feature makes prediction
 
 5 Layer CNN + 3 Layer FC to produce prediction.
 Previous work on problem utilized pretrained EfficietNet models, but used plain CNN layers to focus on improving preprocessing and training logic for extracting lung features.
+Model Architecture: TD-CNN-BiLSTM
+
+**Hybrid Spatiotemporal Regression Network** 
+
+Spatial Feature Extraction (Time-Distributed CNN):
+- Applies a custom CNN to each CT slice independently.
+- Uses GroupNormalization (Groups=4) instead of BatchNormalization. This stabilizes training dynamics when using a Batch Size of 1 (required for memory constraints).
+- Uses L2 Regularization to penalize complex weights and prevent overfitting.
+
+Temporal Aggregation (Bidirectional LSTM):
+- A Bidirectional LSTM processes the sequence of slice features from Top-to-Bottom and Bottom-to-Top (lower 55% area).
+- This captures the 3D structural progression of the disease across the lung's depth.
+
+Regression Head:
+- A Dense layer with Huber Loss combines the spatiotemporal features to predict the final Slope (ml/week).
 
 ##### Other Approaches to Vision Analysis
 All approaches to improve the model is implemented in 'models/cnn.ipynb':
