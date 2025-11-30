@@ -744,7 +744,7 @@ def plot_grut_grid_M2(model, dataset, weeks_seqs, patient_ids, indices=None, n_r
         ax.set_title(f"Patient {pid[:8]}...")
         ax.set_xlabel("Weeks")
 
-        ylabel = "FVC (scaled)" if fvc_scaler is not None else "FVC (mL)"
+        ylabel = "FVC (mL)"
         ax.set_ylabel(ylabel)
 
         ax.grid(True)
