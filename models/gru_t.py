@@ -11,6 +11,13 @@ from torch.utils.data import Dataset, DataLoader
 # Now import the data
 from preprocessing.tabular_preprocessing import train_df, val_df, fvc_scaler
 
+
+train_df['Sex_id'] = train_df['Sex'].map({'Male': 0, 'Female': 1})
+train_df['Smk_id'] = train_df['SmokingStatus'].map({'Never smoked': 0, 'Ex-smoker': 1, 'Currently smokes': 2})
+
+val_df['Sex_id'] = val_df['Sex'].map({'Male': 0, 'Female': 1})
+val_df['Smk_id'] = val_df['SmokingStatus'].map({'Never smoked': 0, 'Ex-smoker': 1, 'Currently smokes': 2})
+
 # feature engineering for gru-t: dt in raw weeks
 train_df["dt"] = train_df.groupby("Patient")["Weeks"].diff().fillna(0.0)
 val_df["dt"]   = val_df.groupby("Patient")["Weeks"].diff().fillna(0.0)
@@ -771,3 +778,6 @@ plot_grut_grid_M2(
     weeks_seqs= weeks_val_seqs_M2,
     patient_ids=val_patients_M2,
 )
+
+if __name__ == "__main__":
+    pass

@@ -57,11 +57,11 @@ This project implements and compares multiple approaches for predicting FVC decl
 - Assumes linear progression between measurements
 - **Performance**: MAE = 524.07 ml, R² = 0.238
 
-**GRU (Gated Recurrent Unit):**
+**GRU-T (Gated Recurrent Unit - Time-aware):**
 - Handles variable-length sequential patient data
 - Processes temporal dependencies in FVC measurements
 - Encodes demographics and baseline features
-- **Performance**: MAE = 131.04 ml, R² = 0.933, RMSE = 192.32 ml
+- **Performance**: MAE = 143.41 ml, R² = 0.894, RMSE = 213.89 ml
 
 **Gaussian Process Regression (M2 with Patient Embeddings):**
 - Models temporal correlation and inter-patient covariance using mixed kernels (Matérn, RBF, Index)
@@ -226,7 +226,7 @@ python models/joint_fusion_process.py  # Early Fusion
 | Model | MAE (ml) | R² | RMSE (ml) | Notes |
 |-------|----------|-----|-----------|-------|
 | **XGBoost Baseline** | 524.07 | 0.238 | 653.17 | Simple baseline with row coercion |
-| **GRU** | 131.04 | 0.933 | 192.32 | Best tabular-only model |
+| **GRU-T** | 143.41 | 0.894 | 213.89 | Best tabular-only model |
 | **Gaussian Process (M2)** | 0.1714* | 0.927* | - | *On scaled values; includes uncertainty |
 | **CNN** | 174.07 | 0.947 | - | Evaluated within late fusion |
 | **Late Fusion (GP+CNN)** | **138.99** | **0.966** | - | **Best overall performance** |
@@ -242,7 +242,7 @@ python models/joint_fusion_process.py  # Early Fusion
 - Demonstrates complementary value of imaging and clinical data
 
 **2. Tabular Models Strong Performance:**
-- GRU and GP both achieve R² > 0.92, showing effectiveness on longitudinal clinical data
+- GRU-T and GP both achieve R² > 0.89, showing effectiveness on longitudinal clinical data
 - GP provides valuable uncertainty quantification with 95% confidence intervals
 
 **3. Early Fusion Challenges:**
@@ -283,9 +283,11 @@ python models/joint_fusion_process.py  # Early Fusion
 
 3. **Glotov, A., & Lyakhov, P. (2021).** Pulmonary fibrosis progression prognosis using Machine Learning. 2021 Ural Symposium on Biomedical Engineering, Radioelectronics and Information Technology (USBEREIT), 0327–0329. https://doi.org/10.1109/usbereit51232.2021.9455070
 
-4. **Open Source Imaging Consortium (OSIC). (2020).** "OSIC Pulmonary Fibrosis Progression." *Kaggle Competition*. https://www.kaggle.com/c/osic-pulmonary-fibrosis-progression
+4. **Liu, N., Gou, S., Gao, R., Su, B., Liu, W., Park, C. K. S., Xing, S., Yuan, J., & Fenster, A. (2025).** GRU-TV: Time- and velocity-aware gated recurrent unit for patient representation. Journal of Biomedical Informatics. Advance online publication. https://doi.org/10.1016/j.jbi.2025.104667
 
-5. **Schulam, P., & Saria, S. (2015).** "A Framework for Individualizing Predictions of Disease Trajectories by Exploiting Multi-Resolution Structure." *Advances in Neural Information Processing Systems*, 28, 748-756. [arXiv:1511.08950](https://arxiv.org/abs/1511.08950)
+5. **Open Source Imaging Consortium (OSIC). (2020).** "OSIC Pulmonary Fibrosis Progression." *Kaggle Competition*. https://www.kaggle.com/c/osic-pulmonary-fibrosis-progression
+
+6. **Schulam, P., & Saria, S. (2015).** "A Framework for Individualizing Predictions of Disease Trajectories by Exploiting Multi-Resolution Structure." *Advances in Neural Information Processing Systems*, 28, 748-756. [arXiv:1511.08950](https://arxiv.org/abs/1511.08950)
 
 ## Contributors
 
