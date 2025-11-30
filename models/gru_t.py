@@ -333,7 +333,7 @@ plt.tight_layout()
 plt.show()
 
 num_ephochs_M2 = len(train_losses_M2)
-epochs_M2 = range(1, num_ephochs_M2 + 1)
+epochs_M2 = range(1, 500 + 1)
 
 plt.figure(figsize=(8,5))
 plt.plot(epochs_M2, train_losses_M2, label="Train loss")
