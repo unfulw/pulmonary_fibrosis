@@ -8,50 +8,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
-# Load the training data
-df = pd.read_csv("../data/train.csv")
-print(df.head())
+# Now import the data
+from preprocessing.tabular_preprocessing import train_df, val_df
 
-print(df.groupby('Patient').size())
-
-print("Missing values: ", df['Weeks'].isna().sum())  # check for missing FVC values
-
-# Same preprocessing as GP
-df['Sex_id'] = df['Sex'].map({'Male': 0, 'Female': 1})
-df['Smk_id'] = df['SmokingStatus'].map({'Never smoked': 0, 'Ex-smoker': 1, 'Currently smokes': 2})
-
-ids = df['Patient'].unique()
-train_ids, val_ids = train_test_split(ids, test_size=0.2, random_state=3244)
-
-train_df = df[df['Patient'].isin(train_ids)].reset_index(drop=True)
-val_df   = df[df['Patient'].isin(val_ids)].reset_index(drop=True)
-
-# Scale columns "Weeks" and "FVC"
-time_scaler = StandardScaler()
-fvc_scaler = StandardScaler()
-train_df["Weeks_scaled"] = time_scaler.fit_transform(train_df[["Weeks"]])
-train_df["FVC_scaled"] = fvc_scaler.fit_transform(train_df[["FVC"]])
-val_df["Weeks_scaled"] = time_scaler.transform(val_df[["Weeks"]])
-val_df["FVC_scaled"] = fvc_scaler.transform(val_df[["FVC"]])
-
-# Calculate baseline FVC (scaled)
-baseline_fvc_tr = train_df.groupby('Patient')['FVC_scaled'].first().to_dict()
-baseline_fvc_val = val_df.groupby('Patient')['FVC_scaled'].first().to_dict()
-train_df['Baseline_FVC'] = train_df['Patient'].map(baseline_fvc_tr)
-val_df['Baseline_FVC'] = val_df['Patient'].map(baseline_fvc_val)
-
-# Sort by patient and weeks
-train_df = train_df.sort_values(['Patient', 'Weeks']).reset_index(drop=True)
-val_df = val_df.sort_values(['Patient', 'Weeks']).reset_index(drop=True)
-
-# dt in raw weeks
+# feature engineering for gru-t: dt in raw weeks
 train_df["dt"] = train_df.groupby("Patient")["Weeks"].diff().fillna(0.0)
 val_df["dt"]   = val_df.groupby("Patient")["Weeks"].diff().fillna(0.0)
 
-# dt in scaled weeks
+# feature engineering for gru-t: dt in scaled weeks
 train_df["dt_scaled"] = train_df.groupby("Patient")["Weeks_scaled"].diff().fillna(0.0)
 val_df["dt_scaled"]   = val_df.groupby("Patient")["Weeks_scaled"].diff().fillna(0.0)
-
 
 # Check the processed data
 # print(val_df.head())
