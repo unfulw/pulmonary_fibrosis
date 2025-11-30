@@ -9,7 +9,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
 # Now import the data
-from preprocessing.tabular_preprocessing import train_df, val_df
+from preprocessing.tabular_preprocessing import train_df, val_df, fvc_scaler
 
 # feature engineering for gru-t: dt in raw weeks
 train_df["dt"] = train_df.groupby("Patient")["Weeks"].diff().fillna(0.0)
@@ -374,6 +374,7 @@ def eval_mae_r2_M1(model1, loader, device, fvc_scaler):
     # ===== Metrics in scaled FVC space =====
     mae_scaled = mean_absolute_error(true_scaled_all, pred_scaled_all)
     r2_scaled  = r2_score(true_scaled_all, pred_scaled_all)
+    rmse_scaled = np.sqrt(np.mean((true_scaled_all - pred_scaled_all) ** 2))
 
     # ===== Convert to RAW FVC in mL =====
     true_raw = fvc_scaler.inverse_transform(true_scaled_all.reshape(-1,1)).ravel()
@@ -381,11 +382,15 @@ def eval_mae_r2_M1(model1, loader, device, fvc_scaler):
 
     mae_raw = mean_absolute_error(true_raw, pred_raw)
     r2_raw  = r2_score(true_raw, pred_raw)
+    rmse_raw = np.sqrt(np.mean((true_raw - pred_raw) ** 2))
+
 
     return {
         "mae_scaled": mae_scaled,
         "r2_scaled": r2_scaled,
+        "rmse_scaled": rmse_scaled,
         "mae_raw": mae_raw,
+        "rmse_raw": rmse_raw,
         "r2_raw": r2_raw,
     }
 
@@ -395,14 +400,18 @@ metrics_val_M1   = eval_mae_r2_M1(model1, val_loader_M1, device, fvc_scaler)
 print("=== M1 TRAIN ===")
 print("MAE (scaled):", metrics_train_M1["mae_scaled"])
 print("R2   (scaled):", metrics_train_M1["r2_scaled"])
+print("RMSE (scaled):", metrics_train_M1["rmse_scaled"])
 print("MAE (mL):", metrics_train_M1["mae_raw"])
 print("R2   (mL):", metrics_train_M1["r2_raw"])
+print("RMSE (mL):", metrics_train_M1["rmse_raw"])
 
 print("\n=== M1 VAL ===")
 print("MAE (scaled):", metrics_val_M1["mae_scaled"])
 print("R2   (scaled):", metrics_val_M1["r2_scaled"])
+print("RMSE (scaled):", metrics_val_M1["rmse_scaled"])
 print("MAE (mL):", metrics_val_M1["mae_raw"])
 print("R2   (mL):", metrics_val_M1["r2_raw"])
+print("RMSE (mL):", metrics_val_M1["rmse_raw"])
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
