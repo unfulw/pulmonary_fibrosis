@@ -368,6 +368,7 @@ pulmonary_fibrosis/
 ├── preprocessing/                     # Data preprocessing modules
 │   ├── tabular_preprocessing.py       # Tabular data preprocessing & train/val split
 │   ├── image_preprocessing.py         # DICOM image preprocessing
+│   ├── CNN_LSTM_data_preprocess.py    # DICOM image preprocessing for CNN_lstm model
 │   ├── pid_split.py                   # Patient ID train/val split
 │   ├── preprocess.py                  # General preprocessing utilities
 │   ├── EDA_scans_processing.py        # Scan exploration utilities
@@ -387,6 +388,7 @@ pulmonary_fibrosis/
 │   ├── joint_fusion_process.ipynb     # Early fusion development
 │   ├── manual_feat_ext.ipynb          # Manual feature extraction experiments
 │   ├── final_jointFusion_model.pth    # Trained early fusion model weights
+|   ├── models/train_cnn_lstm.py       # CNN_lstm model for image data
 │   └── checkpoints/                   # Saved model checkpoints
 │       └── cnn_model_*.pth            # CNN model checkpoints
 ├── evaluation/                        # Evaluation utilities
