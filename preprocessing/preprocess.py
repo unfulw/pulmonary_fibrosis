@@ -208,7 +208,7 @@ def mask_scans(images: list[np.ndarray], window_level: int = 40, window_width: i
   
   return final_masks
 
-def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -> list[np.ndarray]:
+def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset], size: int = 256) -> list[np.ndarray]:
   """
   Preprocess batch of DICOM files: HU conversion, masking, and resizing.
   
@@ -235,13 +235,12 @@ def preprocess_dicom(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -
     
     # Apply mask (background becomes 0, lung tissue is in [0, 1])
     masked_scan = np.float32(normalized_scan * mask)
-    
-    resized_scan = cv2.resize(masked_scan, (512, 512), interpolation=cv2.INTER_AREA)
+    resized_scan = cv2.resize(masked_scan, (size, size), interpolation=cv2.INTER_AREA)
     preprocessed_scans.append(resized_scan)
   
   return np.array(preprocessed_scans, dtype=np.float32)
 
-def preprocess_lung_segmentation(patient_id: str, dcms: list[pydicom.dataset.FileDataset]) -> list[np.ndarray]:
+def preprocess_lung_segmentation(patient_id: str, dcms: list[pydicom.dataset.FileDataset], size: int = 256) -> list[np.ndarray]:
   """
   Preprocess batch of DICOM files: HU conversion, masking, and resizing.
   
@@ -274,7 +273,7 @@ def preprocess_lung_segmentation(patient_id: str, dcms: list[pydicom.dataset.Fil
   # Apply mask (background becomes 0)
   normalized_scan[lung_mask == 0] = 0
   
-  new_size = (512, 512)
+  new_size = (size, size)
   normalized_scan = normalized_scan.squeeze()
   resized_scan = cv2.resize(normalized_scan, new_size, interpolation=cv2.INTER_LINEAR)
 
@@ -298,7 +297,7 @@ def get_test_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int) -
   np.save(os.path.join(data_path, 'test_preprocessed_scans', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
   return preprocessed_scan
 
-def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int, lung_segmentation: bool = False) -> np.ndarray:
+def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int, lung_segmentation: bool = False, size: int = 256) -> np.ndarray:
   """
   Preprocess a single scan and save it to the preprocessed_scans folder
   If the scan is already preprocessed, load it from the preprocessed_scans folder
@@ -307,10 +306,10 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int, lung_s
   Returns: preprocessed_scan: np.ndarray
   """
 
-  if not lung_segmentation and os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy')):
-    return np.load(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'))
+  if not lung_segmentation and os.path.exists(os.path.join(data_path, f'preprocessed_scans_{size}', patient_id, f'{scan_idx}.npy')):
+    return np.load(os.path.join(data_path, f'preprocessed_scans_{size}', patient_id, f'{scan_idx}.npy'))
   elif lung_segmentation:
-    return np.load(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id, f'{scan_idx}.npy'))
+    return np.load(os.path.join(data_path, f'preprocessed_lung_segmentation_{size}', patient_id, f'{scan_idx}.npy'))
   
   if not os.path.exists(os.path.join(data_path, 'train', patient_id, f'{scan_idx}.dcm')):
     return None
@@ -325,25 +324,25 @@ def get_preprocessed_scan(data_path: str, patient_id: str, scan_idx: int, lung_s
     return None
     
   if lung_segmentation:
-    preprocessed_scan = preprocess_lung_segmentation(patient_id, [dcm])
-    if not os.path.exists(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id)):
-      os.makedirs(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id))
-    np.save(os.path.join(data_path, 'preprocessed_lung_segmentation', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
+    preprocessed_scan = preprocess_lung_segmentation(patient_id, [dcm], size)
+    if not os.path.exists(os.path.join(data_path, f'preprocessed_lung_segmentation_{size}', patient_id)):
+      os.makedirs(os.path.join(data_path, f'preprocessed_lung_segmentation_{size}', patient_id))
+    np.save(os.path.join(data_path, f'preprocessed_lung_segmentation_{size}', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
     return preprocessed_scan
   else:
-    preprocessed_scan = preprocess_dicom(patient_id, [dcm])
-    if not os.path.exists(os.path.join(data_path, 'preprocessed_scans', patient_id)):
-      os.makedirs(os.path.join(data_path, 'preprocessed_scans', patient_id))
-    np.save(os.path.join(data_path, 'preprocessed_scans', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
+    preprocessed_scan = preprocess_dicom(patient_id, [dcm], size)
+    if not os.path.exists(os.path.join(data_path, f'preprocessed_scans_{size}', patient_id)):
+      os.makedirs(os.path.join(data_path, f'preprocessed_scans_{size}', patient_id))
+    np.save(os.path.join(data_path, f'preprocessed_scans_{size}', patient_id, f'{scan_idx}.npy'), preprocessed_scan)
     return preprocessed_scan
 
 
-def preprocess_scans(data_path: str, lung_segmentation: bool = False) -> dict[str, np.ndarray]:
+def preprocess_scans(data_path: str, lung_segmentation: bool = False, size: int = 256) -> dict[str, np.ndarray]:
   preprocessed_scans = dict()
   for patient_id in tqdm(os.listdir(os.path.join(data_path, 'train'))):
     patient_scans = []
     for scan_idx in range(1, len(os.listdir(os.path.join(data_path, 'train', patient_id))) + 1):
-      scan = get_preprocessed_scan(data_path, patient_id, scan_idx, lung_segmentation)
+      scan = get_preprocessed_scan(data_path, patient_id, scan_idx, lung_segmentation, size)
       if scan is not None:
         patient_scans.append(scan)
     patient_scans = np.array(patient_scans, dtype=np.float32)
@@ -354,9 +353,9 @@ def preprocess_scans(data_path: str, lung_segmentation: bool = False) -> dict[st
 
 if __name__ == "__main__":
   import os
-  
-  # Load DICOM files for testing
-  patient_dir = 'C:/Coding/pulmonary_fibrosis/osic-pulmonary-fibrosis-progression/'
-  scan = get_preprocessed_scan(patient_dir, 'ID00007637202177411956430', 15)
-  plt.imshow(scan.squeeze(), cmap='gray')
-  plt.show()
+  preprocess_scans('C:/Coding/pulmonary_fibrosis/osic-pulmonary-fibrosis-progression')
+  # # Load DICOM files for testing
+  # patient_dir = 'C:/Coding/pulmonary_fibrosis/osic-pulmonary-fibrosis-progression/'
+  # scan = get_preprocessed_scan(patient_dir, 'ID00007637202177411956430', 15)
+  # plt.imshow(scan.squeeze(), cmap='gray')
+  # plt.show()

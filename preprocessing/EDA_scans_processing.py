@@ -10,7 +10,8 @@ from scipy import ndimage as ndi
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-TRAIN_DATA_DIR = REPO_ROOT / "data" / "train"
+# TRAIN_DATA_DIR = REPO_ROOT / "data" / "train"
+TRAIN_DATA_DIR = REPO_ROOT / "osic-pulmonary-fibrosis-progression" / "train"
 OUTPUT_DIR = REPO_ROOT / "data" / "processed_scans_hu"
 
 # --------------------------------- #

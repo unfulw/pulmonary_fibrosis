@@ -366,15 +366,15 @@ def organize_dicom():
       os.rename(f'{data_dir}/train/{patient_id}/{file_name}', f'{data_dir}/train/{patient_id}/{i+1}.dcm')
 
 def load_patient_scans(patient_id, scan_batch_size: int = 12):
-  if not os.path.exists(f'{data_dir}/preprocessed_scans/{patient_id}'):
+  if not os.path.exists(f'{data_dir}/preprocessed_scans_512/{patient_id}'):
     return None
-  patient_scan_count = len(os.listdir(f'{data_dir}/preprocessed_scans/{patient_id}'))
+  patient_scan_count = len(os.listdir(f'{data_dir}/preprocessed_scans_512/{patient_id}'))
   skip_size = patient_scan_count // scan_batch_size
   remainder = patient_scan_count % scan_batch_size
   scans = []
   curr = 0
   while curr < patient_scan_count:
-    scan = np.load(f'{data_dir}/preprocessed_scans/{patient_id}/{curr+1}.npy')
+    scan = np.load(f'{data_dir}/preprocessed_scans_512/{patient_id}/{curr+1}.npy')
     # If scan dim is h*w, add channel dimension
     if len(scan.shape) == 2:
       scan = scan.reshape(1, scan.shape[0], scan.shape[1])

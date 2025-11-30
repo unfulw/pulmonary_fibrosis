@@ -6,21 +6,20 @@ import numpy as np
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
+import torch.nn.functional as F
+
 from datetime import datetime
 from typing import Any
 from collections import defaultdict
-import torch
 from torch import nn
-import torch.nn.functional as F
 from tqdm import tqdm
-import pickle
-
 
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root))
 
 from preprocessing.tabular_preprocessing import train_df, val_df, fvc_scaler, time_scaler
-from preprocessing.scan.preprocess import preprocess_scans, get_preprocessed_scan
+from preprocessing.scan.preprocess import preprocess_scans, get_preprocessed_scan, get_test_preprocessed_scan
 
 # data_dir = r'C:\Users\rlaal\Documents\NUS\AY2526S1\CS3244\Project\osic-pulmonary-fibrosis-progression'
 data_dir = r'C:\Coding\pulmonary_fibrosis\osic-pulmonary-fibrosis-progression'
@@ -96,13 +95,20 @@ def plot_loss(training_loss, val_loss, window=20):
 
 
 
-def get_scans(patient_id: str, patient_scan_count: int, scan_batch_size: int) -> torch.Tensor:
+def get_scans(patient_id: str, patient_scan_count: int, scan_batch_size: int, test=False) -> torch.Tensor:
     skip_size = max(1, round(patient_scan_count / scan_batch_size))
     scans = []
     failed_scans = []
     
     for j in range(1, patient_scan_count + 1, skip_size):
-        scan = get_preprocessed_scan(data_dir, patient_id, j)
+        try:
+            if test:
+                scan = get_test_preprocessed_scan(data_dir, patient_id, j)
+            else:
+                scan = get_preprocessed_scan(data_dir, patient_id, j)
+        except Exception as e:
+            failed_scans.append(j)
+            continue
         if scan is None:
             failed_scans.append(j)
             continue
@@ -113,10 +119,10 @@ def get_scans(patient_id: str, patient_scan_count: int, scan_batch_size: int) ->
         scans.append(scan)
     
     if len(scans) == 0:
-        print(f"WARNING: No valid scans for patient {patient_id}")
-        print(f"  Scan count: {patient_scan_count}, Skip size: {skip_size}")
-        print(f"  Attempted indices: {list(range(1, patient_scan_count + 1, skip_size))}")
-        print(f"  Failed indices: {failed_scans}")
+        # print(f"WARNING: No valid scans for patient {patient_id}")
+        # print(f"  Scan count: {patient_scan_count}, Skip size: {skip_size}")
+        # print(f"  Attempted indices: {list(range(1, patient_scan_count + 1, skip_size))}")
+        # print(f"  Failed indices: {failed_scans}")
         # Return None instead of raising error - caller should handle this
         return None
     
@@ -419,29 +425,30 @@ class FCLayer(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-    
-cnn_model = CNN().to(device)
-fc_model = FCLayer(tabular_norm_stats=tabular_stats).to(device)
-log_file = 'training_log_simple_cnn.txt'
 
-training_loss, val_loss = train_model(cnn_model, fc_model, log_file, epoch=10, scan_batch_size=64)
+if __name__ == "__main__":
+    cnn_model = CNN().to(device)
+    fc_model = FCLayer(tabular_norm_stats=tabular_stats).to(device)
+    log_file = 'training_log_simple_cnn.txt'
 
-# Save model weights
-checkpoint_dir = Path(__file__).parent / 'checkpoints'
-checkpoint_dir.mkdir(exist_ok=True)
+    training_loss, val_loss = train_model(cnn_model, fc_model, log_file, epoch=10, scan_batch_size=64)
 
-timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-checkpoint_path = checkpoint_dir / f'cnn_model_{timestamp}.pth'
+    # Save model weights
+    checkpoint_dir = Path(__file__).parent / 'checkpoints'
+    checkpoint_dir.mkdir(exist_ok=True)
 
-torch.save({
-    'cnn_state_dict': cnn_model.state_dict(),
-    'fc_state_dict': fc_model.state_dict(),
-    'tabular_stats': tabular_stats,
-    'training_loss': training_loss,
-    'val_loss': val_loss
-}, checkpoint_path)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    checkpoint_path = checkpoint_dir / f'cnn_model_{timestamp}.pth'
 
-print(f"Model weights saved to: {checkpoint_path}")
+    torch.save({
+        'cnn_state_dict': cnn_model.state_dict(),
+        'fc_state_dict': fc_model.state_dict(),
+        'tabular_stats': tabular_stats,
+        'training_loss': training_loss,
+        'val_loss': val_loss
+    }, checkpoint_path)
 
-plot_loss(training_loss, val_loss)
-plot_patient_predict_samples(cnn_model, fc_model)
+    print(f"Model weights saved to: {checkpoint_path}")
+
+    plot_loss(training_loss, val_loss)
+    plot_patient_predict_samples(cnn_model, fc_model)
