@@ -316,7 +316,8 @@ def best_epoch(model_name, train_loader,val_loader, model, optimizer, num_epochs
 best_epoch_M1, best_state_M1, train_losses_M1, val_losses_M1 = best_epoch("M1", train_loader_M1, val_loader_M1, model1, optimizer_M1, num_epochs=100, patience=50)
 best_epoch_M2, best_state_M2, train_losses_M2, val_losses_M2 = best_epoch("M2", train_loader_M2, val_loader_M2, model2, optimizer_M2, num_epochs=500, patience=50)
 
-epochs_M1 = range(1, 100 + 1)
+num_ephochs_M1 = len(train_losses_M1)
+epochs_M1 = range(1, num_ephochs_M1 + 1)
 
 plt.figure(figsize=(8,5))
 plt.plot(epochs_M1, train_losses_M1, label="Train loss")
@@ -331,8 +332,8 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-
-epochs_M2 = range(1, 500 + 1)
+num_ephochs_M2 = len(train_losses_M2)
+epochs_M2 = range(1, num_ephochs_M2 + 1)
 
 plt.figure(figsize=(8,5))
 plt.plot(epochs_M2, train_losses_M2, label="Train loss")
@@ -634,61 +635,6 @@ print("Val R2:", val_r2)
 print("\nTrain MAE:", train_mae)
 print("Val MAE:", val_mae)
 
-
-import matplotlib.pyplot as plt
-
-def plot_patient_M2(ax, weeks, true, pred, sigma, title=None, ci=1.96):
-    """
-    ax    : matplotlib Axes
-    weeks : (T,)
-    true  : (T,)  true FVC (scaled or raw)
-    pred  : (T,)  mu
-    sigma : (T,)  std dev in same units as true/pred
-    ci    : float, e.g. 1.96 for ~95% CI
-    """
-
-    # CI bounds
-    upper = pred + ci * sigma
-    lower = pred - ci * sigma
-
-    # shade CI
-    ax.fill_between(weeks, lower, upper, color="C0", alpha=0.2, label=f"{int(ci*100/1.96)}% CI")
-
-    # true points
-    ax.plot(weeks, true, marker="o", linestyle="-", color="C0", label="True FVC")
-
-    # predicted mean
-    ax.plot(weeks, pred, marker="s", linestyle="--", color="C1", label="Predicted FVC")
-
-    ax.set_xlabel("Weeks")
-    ax.set_ylabel("FVC (scaled)" if title and "scaled" in title.lower() else "FVC")
-    if title:
-        ax.set_title(title)
-    ax.grid(True)
-
-n_patients_to_plot = 10
-fig, axes = plt.subplots(2, 5, figsize=(18, 6), sharey=True)
-axes = axes.flatten()
-
-for i in range(n_patients_to_plot):
-    weeks, true, pred, sigma = get_patient_pred(
-        model_name="M2",
-        model=model2,
-        dataset=val_dataset_M2,        # your M2 dataset
-        weeks_seqs= weeks_val_seqs_M2,     # list of week arrays
-        idx=i,
-    )
-
-    ax = axes[i]
-    # pid = val_patients_M2[i] if 'patient_ids_val' in globals() else f"Patient {i}"
-    pid = val_patients_M2[i]
-    plot_patient_M2(ax, weeks, true, pred, sigma, title=f"Patient {pid[:8]}...")
-    
-# common legend
-handles, labels = axes[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc="upper right")
-plt.tight_layout()
-plt.show()
 
 def plot_grut_grid_M2(model, dataset, weeks_seqs, patient_ids, indices=None, n_rows=2, n_cols=5, ci=1.96):
     """
