@@ -9,3 +9,11 @@ __pycache__/
 # Datafiles
 osic-pulmonary-fibrosis-progression.zip
 osic-pulmonary-fibrosis-progression/
+
+# Ignore all processed numpy arrays
+*.npy
+
+# Ignore the folder containing raw or processed data
+data/
+processed_train/
+models/CNN_LSTM/processed_train/
