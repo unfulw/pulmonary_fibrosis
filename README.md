@@ -453,6 +453,8 @@ python models/joint_fusion_process.py  # Early Fusion
 
 6. **Schulam, P., & Saria, S. (2015).** "A Framework for Individualizing Predictions of Disease Trajectories by Exploiting Multi-Resolution Structure." *Advances in Neural Information Processing Systems*, 28, 748-756. [arXiv:1511.08950](https://arxiv.org/abs/1511.08950)
 
+7. Lynch, D. A. (1996). Ground glass attenuation on CT in patients with idiopathic pulmonary fibrosis. Chest, 110(2), 312–313. https://doi.org/10.1378/chest.110.2.312
+
 ## Contributors
 
 **Team Pg34 - CS3244 Machine Learning Project:**
@@ -470,14 +472,10 @@ This project is for academic purposes as part of CS3244 Machine Learning coursew
 ## Acknowledgments / Citations
 
 - Open Source Image Consortium (OSIC) for providing the dataset
-- CS3244 course staff for guidance and support
-- Research Paper on Significance of CT feature for fibrosis longevity. 
-  https://journal.chestnet.org/article/S0012-3692(15)46366-4/fulltext
 - Understanding CT of honeycombed lungs
   https://radiopaedia.org/articles/honeycombing-lungs
 - Approach from Kaggle Competition winner for inspiration
   https://www.kaggle.com/competitions/osic-pulmonary-fibrosis-progression/writeups/art-1st-place-mostly-unpredictable-solution
-- Open Source Imaging Consortium (OSIC) for providing the high-quality dataset
 - CS3244 course staff for guidance and support throughout the project
 - National University of Singapore, School of Computing
 
